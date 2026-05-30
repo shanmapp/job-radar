@@ -1,6 +1,8 @@
 import asyncio
 import concurrent.futures
 import psutil
+from datetime import datetime
+import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request
 from flask_cors import CORS
@@ -116,6 +118,21 @@ def handle_check_brands():
     concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_brand_jobs)
     return {"message": "Brand job check started"}, 202
 
+UK_TZ = pytz.timezone("Europe/London")
+
+def is_peak_hours():
+    now = datetime.now(UK_TZ)
+    return now.weekday() < 5 and 8 <= now.hour < 18  # Mon-Fri 8am-6pm UK
+
+def smart_crawl(fn, email):
+    """Run crawler at 15min intervals during peak, 60min otherwise."""
+    minutes = 15 if is_peak_hours() else 60
+    print(f"Running {fn.__name__} (next check in {minutes}min)")
+    fn(email)
+    # Reschedule dynamically based on current time
+    job_id = f"smart_{fn.__name__}_{email}"
+    scheduler.reschedule_job(job_id, trigger='interval', minutes=minutes)
+
 @app.route('/main', methods=['POST'])
 def handle_check_periodically():
     data = request.get_json() or {}
@@ -125,33 +142,20 @@ def handle_check_periodically():
     if not receiver_email:
         return {"error": "Email is required"}, 400
 
-    # Schedule Amazon crawler
-    job_id = f"job_check_{receiver_email}"
-    if not scheduler.get_job(job_id):
-        scheduler.add_job(
-            check_new_job,
-            'interval',
-            minutes=15,
-            args=[receiver_email],
-            id=job_id
-        )
+    crawlers = [check_new_job, check_f1_jobs, check_soccer_jobs, check_brand_jobs]
+    for fn in crawlers:
+        job_id = f"smart_{fn.__name__}_{receiver_email}"
+        if not scheduler.get_job(job_id):
+            initial_interval = 15 if is_peak_hours() else 60
+            scheduler.add_job(
+                smart_crawl,
+                'interval',
+                minutes=initial_interval,
+                args=[fn, receiver_email],
+                id=job_id
+            )
 
-    # Schedule F1 crawler
-    f1_job_id = f"f1_check_{receiver_email}"
-    if not scheduler.get_job(f1_job_id):
-        scheduler.add_job(check_f1_jobs, 'interval', minutes=30, args=[receiver_email], id=f1_job_id)
-
-    # Schedule soccer crawler
-    soccer_job_id = f"soccer_check_{receiver_email}"
-    if not scheduler.get_job(soccer_job_id):
-        scheduler.add_job(check_soccer_jobs, 'interval', minutes=30, args=[receiver_email], id=soccer_job_id)
-
-    # Schedule brands crawler
-    brands_job_id = f"brands_check_{receiver_email}"
-    if not scheduler.get_job(brands_job_id):
-        scheduler.add_job(check_brand_jobs, 'interval', minutes=60, args=[receiver_email], id=brands_job_id)
-
-    return {"message": f"Scheduled Amazon (15min), F1 (30min), Soccer (30min), Brands (60min) checks for {receiver_email}"}, 200
+    return {"message": f"Scheduled all crawlers for {receiver_email} — 15min (peak) / 60min (off-peak)"}, 200
 
 if __name__ == '__main__':
     app.run(debug=False, port=8000)

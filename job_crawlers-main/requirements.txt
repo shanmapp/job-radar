@@ -20,6 +20,7 @@ psutil==5.9.8
 PySocks==1.7.1
 python-dotenv==1.0.1
 pytz==2024.1
+pytz-deprecation-shim==0.1.0.post0
 requests==2.32.3
 selenium==4.21.0
 six==1.16.0
