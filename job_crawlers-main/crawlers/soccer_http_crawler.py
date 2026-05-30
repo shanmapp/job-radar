@@ -3,14 +3,6 @@ from crawlers.filters import is_relevant, matches_location
 import requests
 from bs4 import BeautifulSoup
 
-ROLE_KEYWORDS = ["strategy", "brand", "partnerships", "sponsorship"]
-SENIORITY_KEYWORDS = ["coordinator", "specialist", "executive", "associate", "analyst", "assistant", "junior"]
-
-
-def is_relevant(title):
-    t = title.lower()
-    return any(k in t for k in ROLE_KEYWORDS)
-
 
 def crawl_arsenal():
     jobs = []

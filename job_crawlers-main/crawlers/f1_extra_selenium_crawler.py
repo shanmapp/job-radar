@@ -7,15 +7,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-ROLE_KEYWORDS = ["strategy", "brand", "partnerships", "sponsorship"]
-LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
-                  "italy", "italia", "maranello", "milan", "rome", "turin",
-                  "switzerland", "swiss", "geneva", "zurich", "basel"]
-
-
-def is_relevant(title):
-    return any(k in title.lower() for k in ROLE_KEYWORDS)
-
 
 def matches_location(loc):
     if not loc:

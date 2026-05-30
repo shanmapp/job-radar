@@ -6,15 +6,6 @@ LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "londo
                   "italy", "italia", "maranello", "milan", "rome", "turin",
                   "switzerland", "swiss", "geneva", "zurich", "basel"]
 
-ROLE_KEYWORDS = ["strategy", "brand", "partnerships", "sponsorship"]
-SENIORITY_KEYWORDS = ["coordinator", "specialist", "executive", "associate", "analyst", "assistant", "junior"]
-
-
-def is_relevant(title):
-    title_lower = title.lower()
-    # Must match a role keyword; seniority is optional additional context
-    return any(k in title_lower for k in ROLE_KEYWORDS)
-
 
 def matches_location(location_str):
     if not location_str:
