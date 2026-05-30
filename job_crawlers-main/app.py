@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import psutil
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request
 from flask_cors import CORS
@@ -26,6 +27,10 @@ def check_new_job(receiverEmail=None):
     asyncio.run(run_crawler_for_amazon(receiverEmail))
 
 def _run_crawler(crawler):
+    mem = psutil.virtual_memory()
+    if mem.percent > 85:
+        print(f"Skipping {crawler.__name__} — memory at {mem.percent:.0f}%")
+        return []
     try:
         return crawler() or []
     except Exception as e:
