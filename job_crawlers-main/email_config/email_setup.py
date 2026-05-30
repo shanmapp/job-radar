@@ -1,39 +1,37 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import os
+import requests
 
-def send_email(job_details_list, receiverEmail = None):
-    from_email = ""
-    from_password = ""
-    print("In send email function " +receiverEmail)
-    to_email = receiverEmail
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-    subject = "New " + job_details_list[0]['company'] +  " Job Posting: "
+def send_email(job_details_list, receiverEmail=None):
+    if not job_details_list:
+        return
 
-    # Concatenate job details for all jobs into a single string
-    body = ""
-    for job_details in job_details_list:
-        body += f"Job Title: {job_details['title']} "
-        body += f"Job Number: {job_details['number']}\n"
-        body += f"Job Link: {job_details['link']}\n\n"
+    for job in job_details_list[:10]:
+        company = job.get("company", "Unknown company")
+        title = job.get("title", "Unknown title")
+        location = job.get("location", "")
+        link = job.get("job_link") or job.get("link") or ""
 
-    msg = MIMEMultipart()
-    msg['From'] = from_email
-    msg['To'] = "".join(to_email)
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+        header = f"*{company}*"
 
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(from_email, from_password)
-        text = msg.as_string()
-        server.sendmail(from_email, to_email, text)
-        print("Email sent successfully.")
-    except smtplib.SMTPAuthenticationError:
-        print("Failed to authenticate with the email server. Check the username/password.")
-    except smtplib.SMTPException as e:
-        print(f"SMTP error occurred: {e}")
-    finally:
-        # Ensure the server is always closed, even if error occurs
-        server.quit()
+        body = f"{title}\n{location}" if location else title
+
+        # Link line
+        footer = f"[View Job]({link})" if link else ""
+
+        message = f"{header}\n{body}"
+        if footer:
+            message += f"\n{footer}"
+
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "Markdown",
+        }
+
+        response = requests.post(url, data=payload, timeout=20)
+        response.raise_for_status()
+
