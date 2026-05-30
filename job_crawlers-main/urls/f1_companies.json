@@ -1,0 +1,34 @@
+{
+  "locations": ["United Kingdom", "Italy", "Switzerland"],
+  "keywords": {
+    "roles": ["strategy", "brand", "partnerships", "sponsorship"],
+    "seniority": ["coordinator", "specialist", "executive", "associate", "analyst", "assistant", "junior"]
+  },
+  "companies": {
+    "Aston Martin F1": {
+      "platform": "pinpoint",
+      "api_url": "https://astonmartinf1.pinpointhq.com/postings.json",
+      "method": "http"
+    },
+    "Ferrari F1": {
+      "platform": "sap",
+      "search_url": "https://jobs.ferrari.com/search",
+      "method": "http"
+    },
+    "McLaren Racing": {
+      "platform": "recruitee",
+      "careers_url": "https://racingcareers.mclaren.com/",
+      "method": "selenium"
+    },
+    "Red Bull Racing": {
+      "platform": "oracle",
+      "careers_url": "https://careers.redbullracing.com/",
+      "method": "selenium"
+    },
+    "Mercedes-AMG F1": {
+      "platform": "nextjs",
+      "careers_url": "https://www.mercedesamgf1.com/careers/vacancies",
+      "method": "selenium"
+    }
+  }
+}
