@@ -1,8 +1,11 @@
-/env
-__pycache___
-__pycache__
+env/
+source/
+venv/
+myenv/
 __pycache__/
-/.DS_Store
+*.pyc
+*.pyo
 .DS_Store
-.DS_Store
-/myenv
+package-lock.json
+*.log
+.env
