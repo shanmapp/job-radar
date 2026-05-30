@@ -1,8 +1,9 @@
 import os
+import certifi
 import pymongo
 
 mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
-client = pymongo.MongoClient(mongo_uri)
+client = pymongo.MongoClient(mongo_uri, tlsCAFile=certifi.where())
 
 # Connect to the database and collection
 db = client["crawler"]  # Replace with your database name
