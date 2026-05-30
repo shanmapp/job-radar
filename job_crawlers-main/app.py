@@ -64,8 +64,8 @@ def check_f1_jobs(receiverEmail=None):
 
 @app.route('/check_new_job', methods=['GET'])
 def handle_check_new_job():
-    check_new_job()
-    return {"message": "Job check complete"}, 200
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_new_job)
+    return {"message": "Job check started"}, 202
 
 def check_soccer_jobs(receiverEmail=None):
     crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_chelsea, crawl_tottenham, crawl_bayern, crawl_psg]
@@ -83,13 +83,13 @@ def check_soccer_jobs(receiverEmail=None):
 
 @app.route('/f1', methods=['GET'])
 def handle_check_f1():
-    check_f1_jobs()
-    return {"message": "F1 job check complete"}, 200
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_f1_jobs)
+    return {"message": "F1 job check started"}, 202
 
 @app.route('/soccer', methods=['GET'])
 def handle_check_soccer():
-    check_soccer_jobs()
-    return {"message": "Soccer job check complete"}, 200
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_soccer_jobs)
+    return {"message": "Soccer job check started"}, 202
 
 
 def check_brand_jobs(receiverEmail=None):
@@ -108,8 +108,8 @@ def check_brand_jobs(receiverEmail=None):
 
 @app.route('/brands', methods=['GET'])
 def handle_check_brands():
-    check_brand_jobs()
-    return {"message": "Brand job check complete"}, 200
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_brand_jobs)
+    return {"message": "Brand job check started"}, 202
 
 @app.route('/main', methods=['POST'])
 def handle_check_periodically():
