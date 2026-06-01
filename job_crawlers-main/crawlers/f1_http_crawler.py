@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location
+from crawlers.filters import is_relevant, matches_location, ROLE_KEYWORDS
 import requests
 from bs4 import BeautifulSoup
 
@@ -50,7 +50,7 @@ def crawl_ferrari():
     jobs = []
     seen = set()
 
-    for keyword in ROLE_KEYWORDS + SENIORITY_KEYWORDS:
+    for keyword in ROLE_KEYWORDS:
         try:
             resp = requests.get(
                 "https://jobs.ferrari.com/search",

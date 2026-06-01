@@ -1,0 +1,47 @@
+import asyncio
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask, request
+from flask_cors import CORS
+from crawlers.amazon_crawler import run_crawler_for_amazon
+
+app = Flask(__name__)
+CORS(app)
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+def check_new_job(receiverEmail=None):
+    asyncio.run(run_crawler_for_amazon(receiverEmail))
+    print("Checking for new job...")
+
+@app.route('/check_new_job', methods=['GET'])
+def handle_check_new_job():
+    check_new_job()
+    return {"message": "Job check complete"}, 200
+
+@app.route('/main', methods=['POST'])
+def handle_check_periodically():
+    data = request.get_json() or {}
+    receiver_email = data.get("email")
+    print("Received email:", receiver_email)
+
+    if not receiver_email:
+        return {"error": "Email is required"}, 400
+
+    job_id = f"job_check_{receiver_email}"
+
+    if not scheduler.get_job(job_id):
+        scheduler.add_job(
+            check_new_job,
+            'interval',
+            minutes=15,
+            args=[receiver_email],
+            id=job_id
+        )
+
+    return {"message": f"Scheduled job checks every 15 minutes for {receiver_email}"}, 200
+
+if __name__ == '__main__':
+    app.run(debug=False, port=8000)
+
+
