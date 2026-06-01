@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location
+from crawlers.filters import is_relevant, matches_location, matches_keywords
 """Selenium crawlers for soccer clubs: Man City, Chelsea, Tottenham, Bayern Munich, PSG."""
 import time
 from selenium import webdriver
