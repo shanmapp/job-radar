@@ -558,7 +558,7 @@ def crawl_all_brands_selenium():
     all_tasks = workday_tasks + CUSTOM_CRAWLERS
 
     jobs = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         for result in executor.map(lambda f: f(), all_tasks):
             jobs.extend(result or [])
     return jobs

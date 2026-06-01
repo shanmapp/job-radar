@@ -58,7 +58,7 @@ def check_f1_jobs(receiverEmail=None):
         crawl_haas, crawl_formula1,
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         results = list(executor.map(_run_crawler, crawlers))
 
     all_new_jobs = _save_jobs(results)
@@ -77,7 +77,7 @@ def handle_check_new_job():
 def check_soccer_jobs(receiverEmail=None):
     crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_chelsea, crawl_tottenham, crawl_bayern, crawl_psg]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         results = list(executor.map(_run_crawler, crawlers))
 
     all_new_jobs = _save_jobs(results)
@@ -100,7 +100,7 @@ def handle_check_soccer():
 
 
 def check_brand_jobs(receiverEmail=None):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         http_future = executor.submit(crawl_all_brands_http)
         selenium_future = executor.submit(crawl_all_brands_selenium)
         results = [http_future.result() or [], selenium_future.result() or []]
