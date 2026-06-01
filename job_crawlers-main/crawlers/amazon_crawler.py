@@ -11,7 +11,14 @@ from database.mongo import ensure_company_document, add_jobs_if_not_exists
 # Function to run the crawler for a given URL
 def run_crawler(url, num_job):
     list_of_jobs = []
-    driver = webdriver.Chrome()  # Ensure you have the appropriate WebDriver in PATH
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.binary_location = "/usr/bin/chromium-browser"
+    service = webdriver.ChromeService("/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
     try:
         driver.get(url)
         wait = WebDriverWait(driver, 10)  # 10 seconds wait time
