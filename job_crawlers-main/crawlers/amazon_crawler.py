@@ -16,7 +16,7 @@ def run_crawler(url, num_job):
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.binary_location = "/usr/bin/chromium-browser"
+    options.binary_location = "/usr/bin/google-chrome"
     service = webdriver.ChromeService("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
     try:
