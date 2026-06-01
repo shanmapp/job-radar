@@ -17,7 +17,7 @@ def make_driver():
     options.add_argument("--window-size=1920,1080")
     options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     options.binary_location = "/usr/bin/google-chrome"
-    service = webdriver.ChromeService("/usr/bin/chromedriver")
+    service = webdriver.ChromeService("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=options)
 
 
