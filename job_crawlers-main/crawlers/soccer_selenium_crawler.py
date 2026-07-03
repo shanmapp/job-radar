@@ -1,24 +1,10 @@
 from crawlers.filters import is_relevant, matches_location, matches_keywords
 """Selenium crawlers for soccer clubs: Man City, Chelsea, Tottenham, Bayern Munich, PSG."""
 import time
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-
-
-def make_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.binary_location = "/usr/bin/google-chrome"
-    service = webdriver.ChromeService("/usr/local/bin/chromedriver")
-    return webdriver.Chrome(service=service, options=options)
+from crawlers.driver import make_driver, quit_driver
 
 
 def crawl_man_city():
@@ -65,7 +51,7 @@ def crawl_man_city():
     except Exception as e:
         print(f"Man City crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -108,7 +94,7 @@ def crawl_chelsea():
     except Exception as e:
         print(f"Chelsea crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -147,7 +133,7 @@ def crawl_tottenham():
     except Exception as e:
         print(f"Tottenham crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -204,7 +190,7 @@ def crawl_bayern():
     except Exception as e:
         print(f"Bayern crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -245,5 +231,5 @@ def crawl_psg():
     except Exception as e:
         print(f"PSG crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs

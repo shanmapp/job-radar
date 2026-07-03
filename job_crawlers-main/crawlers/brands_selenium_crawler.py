@@ -7,25 +7,11 @@ import time
 import concurrent.futures
 from functools import partial
 from crawlers.filters import is_relevant, matches_location
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from crawlers.brands_config import WORKDAY_COMPANIES, SELENIUM_COMPANIES
-
-
-def make_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.binary_location = "/usr/bin/google-chrome"
-    service = webdriver.ChromeService("/usr/local/bin/chromedriver")
-    return webdriver.Chrome(service=service, options=options)
+from crawlers.driver import make_driver, quit_driver
+from crawlers.brands_config import WORKDAY_COMPANIES, SELENIUM_COMPANIES, HEURISTIC_COMPANIES
 
 
 # ── Workday (all brand Workday companies share the same DOM) ─────────────────
@@ -72,7 +58,7 @@ def _crawl_workday(company_name, careers_url):
     except Exception as e:
         print(f"{company_name} (Workday) error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -128,7 +114,7 @@ def _crawl_generic(company_name, url, job_sel, title_sel, location_sel=None, lin
     except Exception as e:
         print(f"{company_name} error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -169,7 +155,7 @@ def crawl_netflix():
     except Exception as e:
         print(f"Netflix error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -209,7 +195,7 @@ def crawl_nike():
     except Exception as e:
         print(f"Nike error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -249,7 +235,7 @@ def crawl_adidas():
     except Exception as e:
         print(f"Adidas error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -290,7 +276,7 @@ def crawl_red_bull_brand():
     except Exception as e:
         print(f"Red Bull error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -326,7 +312,7 @@ def crawl_ea():
     except Exception as e:
         print(f"EA Sports error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -363,7 +349,7 @@ def crawl_amazon_studios():
     except Exception as e:
         print(f"Amazon Studios error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -399,7 +385,7 @@ def crawl_apple():
     except Exception as e:
         print(f"Apple error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -431,7 +417,7 @@ def crawl_nintendo():
     except Exception as e:
         print(f"Nintendo error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -467,7 +453,7 @@ def crawl_patagonia():
     except Exception as e:
         print(f"Patagonia error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -503,7 +489,7 @@ def crawl_notion():
     except Exception as e:
         print(f"Notion error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -540,7 +526,300 @@ def crawl_gucci():
     except Exception as e:
         print(f"Gucci/Kering error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
+    return jobs
+
+
+# ── ATP Tour (HiBob) ──────────────────────────────────────────────────────────
+
+def crawl_atp():
+    """ATP uses HiBob (Angular SPA). Job cards are <careers-ui-job-listing-list-item>
+    elements with no real per-job href (client-side routing only), so we link back
+    to the jobs page itself — same fallback pattern as crawl_chelsea below."""
+    jobs = []
+    driver = make_driver()
+    url = "https://atptourinc.careers.hibob.com/jobs"
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "careers-ui-job-listing-list-item")))
+        time.sleep(3)
+
+        for item in driver.find_elements(By.CSS_SELECTOR, "careers-ui-job-listing-list-item"):
+            try:
+                title = item.find_element(By.CSS_SELECTOR, ".b-heading span").text.strip()
+                lines = [l.strip() for l in item.text.split("\n") if l.strip()]
+                # second line is "Department · Location · EmploymentType · WorkspaceType"
+                parts = [p.strip() for p in lines[1].split("·")] if len(lines) > 1 else []
+                location = parts[1] if len(parts) > 1 else ""
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": "ATP Tour", "title": title,
+                                 "location": location, "link": url, "number": title})
+            except Exception:
+                continue
+
+        print(f"ATP Tour: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"ATP Tour error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
+# ── Manchester United (CandidateManager) ──────────────────────────────────────
+
+def crawl_man_utd():
+    jobs = []
+    driver = make_driver()
+    url = "https://www.candidatemanager.net/cm/p/pJobs.aspx?mid=YFDU&sid=YAZAZEV"
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='pJobDetails']")))
+        time.sleep(2)
+
+        seen = set()
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='pJobDetails']"):
+            href = a.get_attribute("href") or ""
+            title = a.text.strip()
+            if not title or href in seen:
+                continue
+            seen.add(href)
+            try:
+                row = a.find_element(By.XPATH, "./ancestor::tr[1]")
+                tds = row.find_elements(By.TAG_NAME, "td")
+                location = tds[2].text.strip() if len(tds) > 2 else "Manchester, United Kingdom"
+            except Exception:
+                location = "Manchester, United Kingdom"
+
+            if is_relevant(title) and matches_location(location):
+                jobs.append({"company": "Manchester United", "title": title,
+                             "location": location, "link": href, "number": href})
+
+        print(f"Manchester United: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"Manchester United error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
+# ── TeamWork Online (New York Yankees, LA Lakers) ─────────────────────────────
+
+def _crawl_teamworkonline(company_name, url, default_location=""):
+    jobs = []
+    driver = make_driver()
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.organization-portal__job-details")))
+        time.sleep(3)
+
+        seen = set()
+        for card in driver.find_elements(By.CSS_SELECTOR, "div.organization-portal__job-details"):
+            try:
+                a = card.find_element(By.TAG_NAME, "a")
+                href = a.get_attribute("href") or ""
+                if href in seen:
+                    continue
+                seen.add(href)
+
+                lines = [l.strip() for l in card.text.split("\n") if l.strip()]
+                title = lines[0] if lines else ""
+                # lines are: [title, org name, "City · ST", level/department]
+                location = lines[2] if len(lines) > 2 else default_location
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": company_name, "title": title,
+                                 "location": location, "link": href, "number": href})
+            except Exception:
+                continue
+
+        print(f"{company_name}: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"{company_name} error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
+def crawl_yankees():
+    url = ("https://www.teamworkonline.com/baseball-jobs/baseballjobs/major-league-baseball"
+           "?employment_opportunity_search%5Bquery%5D=&employment_opportunity_search%5Bcategory_id%5D="
+           "&employment_opportunity_search%5Borganization_id%5D=28229")
+    return _crawl_teamworkonline("New York Yankees", url, "New York, United States")
+
+
+def crawl_lakers():
+    url = "https://www.teamworkonline.com/basketball-jobs/los-angeles-lakers/los-angeles-lakers-jobs"
+    return _crawl_teamworkonline("LA Lakers", url, "Los Angeles, United States")
+
+
+# ── Generic heuristic crawler (no known ATS / no clean API) ──────────────────
+
+def _crawl_heuristic(company_name, url, default_location=""):
+    """Fallback crawler for sites with no recognizable ATS: follows any
+    job/career/vacancy-looking link, then looks for a location near it in
+    the DOM. Same resilient pattern already used by crawl_netflix/crawl_nike/
+    crawl_patagonia/crawl_notion above."""
+    jobs = []
+    driver = make_driver()
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        try:
+            driver.find_element(By.XPATH,
+                '//*[contains(text(),"Accept") or contains(text(),"Agree") or contains(text(),"Consent")]').click()
+            time.sleep(1)
+        except Exception:
+            pass
+
+        link_sel = "a[href*='job'], a[href*='career'], a[href*='vacan'], a[href*='position'], a[href*='req']"
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, link_sel)))
+        time.sleep(5)
+
+        seen = set()
+        for a in driver.find_elements(By.CSS_SELECTOR, link_sel):
+            href = a.get_attribute("href") or ""
+            title = (a.text or a.get_attribute("textContent") or "").strip()
+            if not href or not title or href in seen or len(title) < 5 or href.rstrip("/") == url.rstrip("/"):
+                continue
+            seen.add(href)
+
+            location = default_location
+            try:
+                card = a.find_element(By.XPATH,
+                    "./ancestor::*[.//*[contains(@class,'location') or contains(@class,'city')]][1]")
+                loc_els = card.find_elements(By.CSS_SELECTOR, "[class*='location'],[class*='city']")
+                if loc_els and loc_els[0].text.strip():
+                    location = loc_els[0].text.strip()
+            except Exception:
+                pass
+
+            if is_relevant(title) and matches_location(location):
+                jobs.append({"company": company_name, "title": title,
+                             "location": location, "link": href, "number": href})
+
+        print(f"{company_name}: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"{company_name} error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
+# ── Paramount (SAP SuccessFactors, UK-jobs category page) ────────────────────
+
+def crawl_paramount():
+    """Paramount's SuccessFactors instance exposes a static UK-scoped category
+    page (/go/UK-Jobs/...) that server-renders real listings — no auth wall,
+    unlike the Hershey/Nestle/Ferrero SF instances tried in this pass."""
+    jobs = []
+    driver = make_driver()
+    url = "https://careers.paramount.com/go/UK-Jobs/8711800/"
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.jobTitle-link")))
+        time.sleep(2)
+
+        seen = set()
+        for a in driver.find_elements(By.CSS_SELECTOR, "a.jobTitle-link"):
+            href = a.get_attribute("href") or ""
+            title = a.text.strip()
+            if not title or href in seen:
+                continue
+            seen.add(href)
+            try:
+                li = a.find_element(By.XPATH, "./ancestor::li[1]")
+                li_lines = li.text.splitlines()
+                location = li_lines[li_lines.index("Location") + 1] if "Location" in li_lines else "London, United Kingdom"
+            except Exception:
+                location = "London, United Kingdom"
+
+            if is_relevant(title) and matches_location(location):
+                jobs.append({"company": "Paramount", "title": title,
+                             "location": location, "link": href, "number": href})
+
+        print(f"Paramount: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"Paramount error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
+# ── Ferrero (custom careers site) ────────────────────────────────────────────
+
+def crawl_ferrero():
+    jobs = []
+    driver = make_driver()
+    url = "https://www.ferrerocareers.com/int/en/jobs"
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/int/en/jobs/']")))
+        time.sleep(2)
+
+        seen = set()
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/int/en/jobs/']"):
+            href = a.get_attribute("href") or ""
+            if href in seen or href.rstrip("/") == url.rstrip("/"):
+                continue
+            seen.add(href)
+            try:
+                card = a.find_element(By.XPATH, "./ancestor::article[1]")
+                lines = [l.strip() for l in card.text.split("\n") if l.strip()]
+                title = lines[0] if lines else ""
+                # layout: Title / Department / "Job ID:" / <id> / Location / EmploymentType / Details
+                location = lines[lines.index("Job ID:") + 2] if "Job ID:" in lines else ""
+            except Exception:
+                title, location = "", ""
+
+            if title and is_relevant(title) and matches_location(location):
+                jobs.append({"company": "Ferrero", "title": title,
+                             "location": location, "link": href, "number": href})
+
+        print(f"Ferrero: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"Ferrero error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
+# ── Nestle (custom Drupal careers site) ──────────────────────────────────────
+
+def crawl_nestle():
+    jobs = []
+    driver = make_driver()
+    url = "https://www.nestlejobs.com/job-search"
+    try:
+        driver.get(url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        time.sleep(2)
+
+        seen = set()
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/job/']"):
+            href = a.get_attribute("href") or ""
+            if href in seen:
+                continue
+            seen.add(href)
+            lines = [l.strip() for l in a.text.split("\n") if l.strip()]
+            title = lines[1] if len(lines) > 1 else (lines[0] if lines else "")
+            location = next((l.replace("Location(s): ", "") for l in lines if l.startswith("Location(s):")), "")
+
+            if title and is_relevant(title) and matches_location(location):
+                jobs.append({"company": "Nestle", "title": title,
+                             "location": location, "link": href, "number": href})
+
+        print(f"Nestle: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"Nestle error: {e}")
+    finally:
+        quit_driver(driver)
     return jobs
 
 
@@ -550,12 +829,15 @@ CUSTOM_CRAWLERS = [
     crawl_netflix, crawl_nike, crawl_adidas, crawl_red_bull_brand,
     crawl_ea, crawl_amazon_studios, crawl_apple, crawl_nintendo,
     crawl_patagonia, crawl_notion, crawl_gucci,
+    crawl_atp, crawl_man_utd, crawl_yankees, crawl_lakers,
+    crawl_paramount, crawl_ferrero, crawl_nestle,
 ]
 
 
 def crawl_all_brands_selenium():
     workday_tasks = [partial(_crawl_workday, name, url) for name, url in WORKDAY_COMPANIES.items()]
-    all_tasks = workday_tasks + CUSTOM_CRAWLERS
+    heuristic_tasks = [partial(_crawl_heuristic, name, url, loc) for name, (url, loc) in HEURISTIC_COMPANIES.items()]
+    all_tasks = workday_tasks + CUSTOM_CRAWLERS + heuristic_tasks
 
     jobs = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:

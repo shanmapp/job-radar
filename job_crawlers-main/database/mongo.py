@@ -1,6 +1,7 @@
 import os
 import certifi
 import pymongo
+from urllib.parse import urlparse
 
 mongo_uri = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
 client = pymongo.MongoClient(mongo_uri, tlsCAFile=certifi.where())
@@ -19,38 +20,33 @@ def ensure_company_document(company_name):
         print(f"Document for {company_name} already exists.")
         return 1
 
+def _normalize_number(number):
+    """Strip query params and fragments from URL-style job numbers."""
+    try:
+        p = urlparse(number)
+        if p.scheme in ("http", "https"):
+            return f"{p.scheme}://{p.netloc}{p.path}".rstrip("/")
+    except Exception:
+        pass
+    return number
+
 def add_jobs_if_not_exists(jobs_list):
-    """Check if job IDs are present in the company's document. Add them if they are not present."""
     new_jobs = []
     for job in jobs_list:
         company_name = job['company']
-        job_title = job['title']
-        job_number = job['number']
-        job_link = job['link']
-
-        # Ensure the company document exists
-        # ensure_company_document(company_name)
-
-        # Use the aggregation framework to check if the job number already exists
-        pipeline = [
-            {"$match": {"company": company_name}},
-            {"$unwind": "$jobs"},
-            {"$match": {"jobs.number": job_number}},
-            {"$project": {"_id": 1}}
-        ]
-        job_exists = list(collection.aggregate(pipeline))
-
-        if not job_exists:
-            new_job = {
-                "title": job_title,
-                "number": job_number,
-                "link": job_link,
-                "company":company_name
-            }
-            collection.update_one(
-                {"company": company_name},
-                {"$push": {"jobs": new_job}}
-            )
+        job_number = _normalize_number(job['number'])
+        new_job = {
+            "title": job['title'],
+            "number": job_number,
+            "link": job['link'],
+            "company": company_name,
+        }
+        # Atomic: only pushes if no existing job has this number
+        result = collection.update_one(
+            {"company": company_name, "jobs.number": {"$ne": job_number}},
+            {"$push": {"jobs": new_job}}
+        )
+        if result.modified_count == 1:
             new_jobs.append(new_job)
             print(f"Added new job {job_number} to {company_name}.")
         else:

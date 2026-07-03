@@ -1,12 +1,12 @@
-import asyncio
 import concurrent.futures
+import subprocess
+import threading
 import psutil
 from datetime import datetime
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import Flask, request
+from flask import Flask
 from flask_cors import CORS
-from crawlers.amazon_crawler import run_crawler_for_amazon
 from crawlers.f1_http_crawler import crawl_aston_martin, crawl_ferrari
 from crawlers.f1_selenium_crawler import crawl_mclaren, crawl_red_bull, crawl_mercedes
 from crawlers.f1_extra_http_crawler import crawl_haas
@@ -23,10 +23,6 @@ CORS(app)
 
 scheduler = BackgroundScheduler()
 scheduler.start()
-
-def check_new_job(receiverEmail=None):
-    print("Checking for new jobs...")
-    asyncio.run(run_crawler_for_amazon(receiverEmail))
 
 def _run_crawler(crawler):
     mem = psutil.virtual_memory()
@@ -50,7 +46,7 @@ def _save_jobs(jobs_list):
                 print(f"DB error: {e}")
     return all_new_jobs
 
-def check_f1_jobs(receiverEmail=None):
+def check_f1_jobs():
     crawlers = [
         crawl_aston_martin, crawl_ferrari,
         crawl_mclaren, crawl_red_bull, crawl_mercedes,
@@ -64,17 +60,12 @@ def check_f1_jobs(receiverEmail=None):
     all_new_jobs = _save_jobs(results)
 
     if all_new_jobs:
-        send_email(all_new_jobs, receiverEmail)
+        send_email(all_new_jobs)
         print(f"Sent {len(all_new_jobs)} new F1 jobs via Telegram")
     else:
         print("No new F1 jobs found")
 
-@app.route('/check_new_job', methods=['GET'])
-def handle_check_new_job():
-    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_new_job)
-    return {"message": "Job check started"}, 202
-
-def check_soccer_jobs(receiverEmail=None):
+def check_soccer_jobs():
     crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_chelsea, crawl_tottenham, crawl_bayern, crawl_psg]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
@@ -83,7 +74,7 @@ def check_soccer_jobs(receiverEmail=None):
     all_new_jobs = _save_jobs(results)
 
     if all_new_jobs:
-        send_email(all_new_jobs, receiverEmail)
+        send_email(all_new_jobs)
         print(f"Sent {len(all_new_jobs)} new soccer jobs via Telegram")
     else:
         print("No new soccer jobs found")
@@ -99,15 +90,13 @@ def handle_check_soccer():
     return {"message": "Soccer job check started"}, 202
 
 
-def check_brand_jobs(receiverEmail=None):
+def check_brand_jobs():
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        http_future = executor.submit(crawl_all_brands_http)
-        selenium_future = executor.submit(crawl_all_brands_selenium)
-        results = [http_future.result() or [], selenium_future.result() or []]
+        results = list(executor.map(_run_crawler, [crawl_all_brands_http, crawl_all_brands_selenium]))
 
     all_new_jobs = _save_jobs(results)
     if all_new_jobs:
-        send_email(all_new_jobs, receiverEmail)
+        send_email(all_new_jobs)
         print(f"Sent {len(all_new_jobs)} new brand jobs via Telegram")
     else:
         print("No new brand jobs found")
@@ -119,43 +108,58 @@ def handle_check_brands():
     return {"message": "Brand job check started"}, 202
 
 UK_TZ = pytz.timezone("Europe/London")
+EST_TZ = pytz.timezone("America/New_York")
+
+def is_quiet_hours():
+    now = datetime.now(EST_TZ)
+    return now.hour >= 23 or now.hour < 6
 
 def is_peak_hours():
     now = datetime.now(UK_TZ)
     return now.weekday() < 5 and 8 <= now.hour < 18  # Mon-Fri 8am-6pm UK
 
-def smart_crawl(fn, email):
-    """Run crawler at 15min intervals during peak, 60min otherwise."""
+_crawl_lock = threading.Lock()
+
+def _kill_stray_chrome():
+    try:
+        subprocess.run(["pkill", "-f", "google-chrome"], capture_output=True)
+        subprocess.run(["pkill", "-f", "chromedriver"], capture_output=True)
+    except Exception:
+        pass
+
+def smart_crawl(fn):
+    if is_quiet_hours():
+        print(f"Quiet hours (11pm–6am EST) — skipping {fn.__name__}")
+        return
     minutes = 15 if is_peak_hours() else 60
     print(f"Running {fn.__name__} (next check in {minutes}min)")
-    fn(email)
-    # Reschedule dynamically based on current time
-    job_id = f"smart_{fn.__name__}_{email}"
+    with _crawl_lock:
+        fn()
+        _kill_stray_chrome()
+    job_id = f"smart_{fn.__name__}"
     scheduler.reschedule_job(job_id, trigger='interval', minutes=minutes)
 
-@app.route('/main', methods=['POST'])
-def handle_check_periodically():
-    data = request.get_json() or {}
-    receiver_email = data.get("email")
-    print("Received email:", receiver_email)
-
-    if not receiver_email:
-        return {"error": "Email is required"}, 400
-
-    crawlers = [check_new_job, check_f1_jobs, check_soccer_jobs, check_brand_jobs]
+def schedule_all_crawlers():
+    crawlers = [check_f1_jobs, check_soccer_jobs, check_brand_jobs]
+    initial_interval = 15 if is_peak_hours() else 60
     for fn in crawlers:
-        job_id = f"smart_{fn.__name__}_{receiver_email}"
+        job_id = f"smart_{fn.__name__}"
         if not scheduler.get_job(job_id):
-            initial_interval = 15 if is_peak_hours() else 60
             scheduler.add_job(
                 smart_crawl,
                 'interval',
                 minutes=initial_interval,
-                args=[fn, receiver_email],
+                args=[fn],
                 id=job_id
             )
+            print(f"Scheduled {fn.__name__} (interval: {initial_interval}min)")
 
-    return {"message": f"Scheduled all crawlers for {receiver_email} — 15min (peak) / 60min (off-peak)"}, 200
+schedule_all_crawlers()
+
+@app.route('/main', methods=['POST'])
+def handle_check_periodically():
+    schedule_all_crawlers()
+    return {"message": "Crawlers scheduled — 15min (peak) / 60min (off-peak)"}, 200
 
 if __name__ == '__main__':
     app.run(debug=False, port=8000)

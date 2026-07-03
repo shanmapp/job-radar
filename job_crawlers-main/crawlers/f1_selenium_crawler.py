@@ -1,10 +1,9 @@
 from crawlers.filters import is_relevant, matches_location
 import time
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+from crawlers.driver import make_driver, quit_driver
 
 LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
                   "italy", "italia", "maranello", "milan", "rome", "turin",
@@ -15,19 +14,6 @@ def matches_location(location_str):
     if not location_str:
         return False
     return any(term in location_str.lower() for term in LOCATION_TERMS)
-
-
-def make_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.binary_location = "/usr/bin/google-chrome"
-    service = webdriver.ChromeService("/usr/local/bin/chromedriver")
-    return webdriver.Chrome(service=service, options=options)
 
 
 def crawl_mclaren():
@@ -71,7 +57,7 @@ def crawl_mclaren():
     except Exception as e:
         print(f"McLaren crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -114,7 +100,7 @@ def crawl_red_bull():
     except Exception as e:
         print(f"Red Bull crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -153,5 +139,5 @@ def crawl_mercedes():
     except Exception as e:
         print(f"Mercedes crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs

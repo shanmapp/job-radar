@@ -12,10 +12,6 @@
     "Nvidia": [
         "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?q=product%20manager&locationHierarchy1=2fcb99c455831013ea52fb338f2932d8&timeType=5509c0b5959810ac0029943377d47364&jobFamilyGroup=0c40f6bd1d8f10ae43ffaefd46dc7e78&jobFamilyGroup=0c40f6bd1d8f10ae43ffc668c6847e8c"
     ], 
-    "Amazon":[
-        "https://www.amazon.jobs/en/search?offset=100&result_limit=10&sort=recent&job_type%5B%5D=Full-Time&country%5B%5D=USA&distanceType=Mi&radius=24km&latitude=&longitude=&loc_group_id=&loc_query=&base_query=product%20manager&city=&country=&region=&county=&query_options=&",
-        "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=recent&job_type%5B%5D=Full-Time&country%5B%5D=USA&distanceType=Mi&radius=24km&latitude=&longitude=&loc_group_id=&loc_query=&base_query=software%20engineer&city=&country=&region=&county=&query_options=&"
-    ],
     "Goldman": ["https://higher.gs.com/results?LOCATION=Boston|Houston&page=1&search=project%20manager&sort=POSTED_DATE", 
                 "https://higher.gs.com/results?LOCATION=Boston|Houston&page=1&search=software&sort=POSTED_DATE"
     ],

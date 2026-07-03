@@ -1,11 +1,10 @@
 from crawlers.filters import is_relevant, matches_location
 """Selenium crawlers for Williams F1, Cadillac F1, Sauber/Audi F1, Alpine F1."""
 import time
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+from crawlers.driver import make_driver, quit_driver
 
 
 def matches_location(loc):
@@ -65,7 +64,7 @@ def _crawl_workday_selenium(company_name, careers_url, filter_location=True):
     except Exception as e:
         print(f"{company_name} Workday crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -75,19 +74,6 @@ def crawl_alpine():
         "https://alliancewd.wd3.myworkdayjobs.com/alpine-racing-careers",
         filter_location=True
     )
-
-
-def make_driver():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    options.binary_location = "/usr/bin/google-chrome"
-    service = webdriver.ChromeService("/usr/local/bin/chromedriver")
-    return webdriver.Chrome(service=service, options=options)
 
 
 def crawl_williams():
@@ -130,7 +116,7 @@ def crawl_williams():
     except Exception as e:
         print(f"Williams crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -166,7 +152,7 @@ def crawl_cadillac():
     except Exception as e:
         print(f"Cadillac crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
@@ -205,7 +191,7 @@ def crawl_sauber():
     except Exception as e:
         print(f"Sauber crawler error: {e}")
     finally:
-        driver.quit()
+        quit_driver(driver)
     return jobs
 
 
