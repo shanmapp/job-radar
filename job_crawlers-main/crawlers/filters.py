@@ -1,4 +1,4 @@
-ROLE_KEYWORDS = ["strategy", "brand", "partnerships", "sponsorship", "licensing"]
+ROLE_KEYWORDS = ["strategy", "brand", "partnerships", "sponsorship", "licensing", "sport"]
 
 LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
                   "italy", "italia", "maranello", "milan", "rome", "turin",
