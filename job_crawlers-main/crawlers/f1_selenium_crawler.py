@@ -110,13 +110,13 @@ def crawl_mercedes():
     try:
         driver.get("https://www.mercedesamgf1.com/careers/vacancies")
         wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/careers/vacancies/REQ']")))
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "tr[class*='vacancylist_vacancies__row']")))
         time.sleep(3)
 
         rows = driver.find_elements(By.CSS_SELECTOR, "tr[class*='vacancylist_vacancies__row']")
         for row in rows:
             try:
-                link_el = row.find_element(By.CSS_SELECTOR, "a[href*='/careers/vacancies/REQ']")
+                link_el = row.find_element(By.CSS_SELECTOR, "a[href*='/careers/vacancies/']")
                 link = link_el.get_attribute("href")
                 row_text = row.text.strip().split("\n")
                 title = row_text[0] if row_text else ""

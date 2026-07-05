@@ -240,35 +240,33 @@ def crawl_adidas():
 
 
 def crawl_red_bull_brand():
-    """Red Bull (drink company) - separate from Red Bull Racing F1."""
+    """Red Bull (drink company) - separate from Red Bull Racing F1.
+    Site redesign killed the old /gb-en/jobs listing (404); jobs now live at
+    /gb-en/results?locations=<id> with per-job links like /gb-en/<slug>-ref<id>."""
     jobs = []
     driver = make_driver()
     try:
-        driver.get("https://jobs.redbull.com/gb-en/jobs")
+        driver.get("https://jobs.redbull.com/gb-en/results?locations=2060")
         wait = WebDriverWait(driver, 20)
         try:
             driver.find_element(By.XPATH, '//*[contains(text(),"Accept")]').click()
             time.sleep(1)
         except Exception:
             pass
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/jobs/'], [class*='job'], [class*='JobCard']")))
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='-ref']")))
         time.sleep(5)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/jobs/']"):
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='-ref']"):
             href = a.get_attribute("href")
-            title = a.text.strip() or a.get_attribute("textContent").strip()
-            if not href or not title or href in seen or len(title) < 5 or href.endswith("/jobs/"):
+            if not href or href in seen:
                 continue
             seen.add(href)
-            try:
-                card = a.find_element(By.XPATH, "./ancestor::*[.//*[contains(@class,'location') or contains(text(),'United Kingdom')]  ][1]")
-                loc_els = card.find_elements(By.CSS_SELECTOR, "[class*='location'],[class*='city']")
-                location = loc_els[0].text.strip() if loc_els else ""
-            except Exception:
-                location = ""
-
-            if is_relevant(title) and matches_location(location):
+            lines = [l.strip() for l in a.text.split("\n") if l.strip()]
+            # layout: "<Category><EmploymentType>" / Title / Location, ...
+            title = lines[1] if len(lines) > 1 else ""
+            location = lines[2] if len(lines) > 2 else ""
+            if title and is_relevant(title) and matches_location(location):
                 jobs.append({"company": "Red Bull", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -504,8 +502,13 @@ def crawl_gucci():
             time.sleep(1)
         except Exception:
             pass
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')))
+        wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')
+                   or "no job openings" in d.find_element(By.TAG_NAME, "body").text.lower())
         time.sleep(3)
+
+        if not driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]'):
+            print("Gucci/Kering: 0 matching jobs (no openings currently listed)")
+            return jobs
 
         seen = set()
         for title_el in driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]'):
