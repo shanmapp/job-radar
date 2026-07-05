@@ -18,7 +18,13 @@ def matches_keywords(title):
 
 def is_entry_level(title):
     t = title.lower()
-    return not any(w in t for w in EXCLUDE_TITLE_WORDS)
+    is_junior_or_assistant = "junior" in t or "assistant" in t
+    for w in EXCLUDE_TITLE_WORDS:
+        if w in t:
+            if w == "manager" and is_junior_or_assistant:
+                continue
+            return False
+    return True
 
 
 def is_relevant(title):
