@@ -4,9 +4,11 @@ HTTP-based crawlers for brand companies using Greenhouse, Lever, SmartRecruiters
 All functions return a list of job dicts: {company, title, location, link, number}
 """
 import requests
+import re
 from crawlers.brands_config import (
     GREENHOUSE_COMPANIES, LEVER_COMPANIES, SMARTRECRUITERS_COMPANIES,
     WORKABLE_COMPANIES, TEAMTAILOR_COMPANIES, BREEZY_COMPANIES, PINPOINT_COMPANIES,
+    CONSIDER_COMPANIES,
 )
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -283,6 +285,54 @@ def crawl_all_pinpoint():
     return jobs
 
 
+# ── Consider ─────────────────────────────────────────────────────────────────
+
+def _crawl_consider(company_name, host, board_id):
+    jobs = []
+    try:
+        session = requests.Session()
+        page = session.get(f"https://{host}/jobs", timeout=15, headers={"User-Agent": UA})
+        page.raise_for_status()
+        match = re.search(r'csrfToken":"([^"]+)"', page.text)
+        if not match:
+            raise ValueError("csrf token not found in careers page")
+        csrf_token = match.group(1)
+
+        r = session.post(
+            f"https://{host}/api-boards/search-jobs",
+            json={"meta": {"size": 100}, "board": {"id": board_id, "isParent": False}, "query": {}},
+            timeout=15,
+            headers={
+                "User-Agent": UA,
+                "Accept": "application/json",
+                "X-CSRF-Token": csrf_token,
+                "Referer": f"https://{host}/jobs",
+            },
+        )
+        r.raise_for_status()
+        for job in r.json().get("jobs", []):
+            title = job.get("title", "")
+            location = ", ".join(job.get("locations", []))
+            link = job.get("applyUrl", "")
+            job_id = str(job.get("jobId", ""))
+
+            if is_relevant(title) and matches_location(location):
+                jobs.append({"company": company_name, "title": title,
+                             "location": location, "link": link, "number": job_id})
+
+        print(f"{company_name}: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"{company_name} (Consider) error: {e}")
+    return jobs
+
+
+def crawl_all_consider():
+    jobs = []
+    for company, (host, board_id) in CONSIDER_COMPANIES.items():
+        jobs.extend(_crawl_consider(company, host, board_id))
+    return jobs
+
+
 # ── Combined entry point ─────────────────────────────────────────────────────
 
 def crawl_all_brands_http():
@@ -294,4 +344,5 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_teamtailor())
     jobs.extend(crawl_all_breezy())
     jobs.extend(crawl_all_pinpoint())
+    jobs.extend(crawl_all_consider())
     return jobs

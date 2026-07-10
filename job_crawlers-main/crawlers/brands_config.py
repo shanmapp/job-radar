@@ -21,6 +21,9 @@ GREENHOUSE_COMPANIES = {
     # MLB's careers pages embed Greenhouse job boards, confirmed via iframe src
     "MLB":                  "majorleaguebaseball",
     "MLB Network":          "mlbnetwork",
+    # mrbeastjobs.com is a custom front-end whose own meta description says
+    # "synced from public Greenhouse boards"; confirmed live via job-boards.greenhouse.io
+    "MrBeast":              "mrbeastyoutube",
 }
 
 LEVER_COMPANIES = {
@@ -59,6 +62,14 @@ BREEZY_COMPANIES = {
 # Pinpoint (ATS): {company name: full postings.json host}
 PINPOINT_COMPANIES = {
     "FIFA": "jobs.fifa.com",
+}
+
+# Consider (ATS): {company name: (careers host, board id)}
+# Confirmed live: careers.night.co/jobs is "Powered by Consider" (product.consider.com),
+# board id "night-media". The search API needs a CSRF token + session cookie minted by
+# a plain GET of the careers page first (no browser/JS execution required).
+CONSIDER_COMPANIES = {
+    "Night": ("careers.night.co", "night-media"),
 }
 
 # Workday Selenium: {company name: full careers URL}
