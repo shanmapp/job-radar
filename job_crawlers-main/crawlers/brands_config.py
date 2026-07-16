@@ -135,10 +135,9 @@ HEURISTIC_COMPANIES = {
     # (Jibe widget on top of iCIMS); direct requests to the icims.com subdomain hit
     # an Auth0 login wall / rate limit, so no unauthenticated JSON API found.
     "Publicis":                         ("https://careers.publicisgroupe.com/jobs", ""),
-    # Confirmed iCIMS (subdomains pepsico.icims.com / uscareers-pepsico.icims.com).
-    # Same JS-SPA-with-auth-walled-backend situation as Publicis above.
-    # Covers Frito-Lay and Gatorade too — all three share the same PepsiCo careers site
-    "PepsiCo (incl. Frito-Lay, Gatorade)": ("https://www.pepsicojobs.com/main", ""),
+    # PepsiCo (incl. Frito-Lay, Gatorade, SodaStream): moved to crawl_pepsico in
+    # brands_http_crawler — the Jibe front end's /api/jobs endpoint is plain
+    # stable JSON (it was the HTML search page that was bot-flaky, not the API).
     # jobs.louisvuitton.com returns HTTP 403 from AkamaiGHost bot protection on a
     # plain request — could not fingerprint the ATS or confirm real job data without
     # a full browser session (cookies/JS challenge required).

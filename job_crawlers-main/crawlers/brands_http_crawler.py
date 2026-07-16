@@ -335,6 +335,47 @@ def crawl_all_consider():
 
 # ── Combined entry point ─────────────────────────────────────────────────────
 
+# ── PepsiCo (Jibe/iCIMS JSON API) ────────────────────────────────────────────
+
+PEPSICO_LOCATIONS = ["United Kingdom", "Italy", "Switzerland"]
+
+def crawl_pepsico():
+    """pepsicojobs.com's Jibe front end exposes /api/jobs — plain JSON, no
+    auth, stable across consecutive requests (the HTML search page is the
+    part that's bot-flaky; this API is not). Covers Frito-Lay, Gatorade and
+    SodaStream too — all share the same careers site. The server-side
+    `location` param is fuzzy (multi-location postings from other countries
+    leak in), so location is still verified locally."""
+    jobs, seen = [], set()
+    for loc_query in PEPSICO_LOCATIONS:
+        try:
+            r = requests.get(
+                "https://www.pepsicojobs.com/api/jobs",
+                params={"location": loc_query, "page": 1, "limit": 100},
+                timeout=20,
+                headers={"User-Agent": UA, "Accept": "application/json"}
+            )
+            r.raise_for_status()
+            for item in r.json().get("jobs", []):
+                data = item.get("data", {})
+                title = (data.get("title") or "").strip()
+                location = data.get("full_location") or data.get("short_location") or ""
+                slug = str(data.get("slug") or data.get("req_id") or "")
+                if not slug or slug in seen:
+                    continue
+                seen.add(slug)
+                link = f"https://www.pepsicojobs.com/main/jobs/{slug}?lang=en-us"
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": "PepsiCo", "title": title,
+                                 "location": location, "link": link, "number": slug})
+        except Exception as e:
+            print(f"PepsiCo (Jibe) error for {loc_query}: {e}")
+
+    print(f"PepsiCo: {len(jobs)} matching jobs")
+    return jobs
+
+
 def crawl_all_brands_http():
     jobs = []
     jobs.extend(crawl_all_greenhouse())
@@ -345,4 +386,5 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_breezy())
     jobs.extend(crawl_all_pinpoint())
     jobs.extend(crawl_all_consider())
+    jobs.extend(crawl_pepsico())
     return jobs
