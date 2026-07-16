@@ -1,26 +1,41 @@
-ROLE_KEYWORDS = ["strategy", "brand", "partnerships", "sponsorship", "licensing", "sport"]
+import re
+
+# Matched as whole words only — plain substring matching let "sport" hit
+# "tranSPORT"/"pasSPORT", so inflections are listed explicitly rather than
+# relying on a stem matching its own plural.
+ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
+                 "partnership", "partnerships", "sponsorship", "sponsorships",
+                 "licensing", "sport", "sports"]
+
+_ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWORDS))
 
 LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
                   "italy", "italia", "maranello", "milan", "rome", "turin",
                   "switzerland", "swiss", "geneva", "zurich", "basel"]
 
-# Titles containing these words are senior/experienced roles — skip them
+# Titles containing these words are senior/experienced roles — skip them.
+# Also matched as whole words, so padding like " sr " / "vp " is unnecessary.
+# "leader"/"leaders" are spelled out because whole-word "lead" no longer
+# catches them; "leadership" is deliberately absent so it stays allowed.
 EXCLUDE_TITLE_WORDS = [
-    "senior", " sr ", "sr.", "manager", "director", "head of", "head,",
-    "lead", "principal", "vice president", "vp ", " vp", "chief", "president",
-    "global", "group", "regional", "svp", "evp", "cmo", "ceo", "cco",
+    "senior", "sr", "manager", "director", "head",
+    "lead", "leads", "leader", "leaders", "principal", "vice president", "vp",
+    "chief", "president", "global", "group", "regional", "svp", "evp",
+    "cmo", "ceo", "cco",
 ]
+
+_EXCLUDE_RES = {w: re.compile(r"\b%s\b" % re.escape(w)) for w in EXCLUDE_TITLE_WORDS}
 
 
 def matches_keywords(title):
-    return any(k in title.lower() for k in ROLE_KEYWORDS)
+    return _ROLE_RE.search(title.lower()) is not None
 
 
 def is_entry_level(title):
     t = title.lower()
     is_junior_or_assistant = "junior" in t or "assistant" in t
     for w in EXCLUDE_TITLE_WORDS:
-        if w in t:
+        if _EXCLUDE_RES[w].search(t):
             if w == "manager" and is_junior_or_assistant:
                 continue
             return False
