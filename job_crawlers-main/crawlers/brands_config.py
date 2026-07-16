@@ -64,6 +64,7 @@ BREEZY_COMPANIES = {
 # Pinpoint (ATS): {company name: full postings.json host}
 PINPOINT_COMPANIES = {
     "FIFA": "jobs.fifa.com",
+    "Premier League": "premierleague.pinpointhq.com",
 }
 
 # Consider (ATS): {company name: (careers host, board id)}
