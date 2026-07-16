@@ -32,8 +32,10 @@ LEVER_COMPANIES = {
 }
 
 SMARTRECRUITERS_COMPANIES = {
-    # LVMH umbrella covers Louis Vuitton, Dior, Givenchy, etc.
-    "LVMH":            "LVMH2",
+    # LVMH removed: the "LVMH2" tenant only carried Beauty/Perfumes & Cosmetics.
+    # crawl_lvmh (brands_selenium_crawler) now covers the whole group via the
+    # lvmh.com job hub, and keeping both would double-notify beauty postings
+    # under different job numbers.
     "AB InBev":        "ABInBev1",
     "McDonald's":      "mcdonaldscorporation",
     "NBCUniversal":    "NBCUniversal3",
@@ -168,12 +170,9 @@ HEURISTIC_COMPANIES = {
     # Confirmed Avature (lululemonincchina.avature.cn seen for the CN career flow);
     # the primary careers.lululemon.com flow is JS-rendered with no SSR job data.
     "Lululemon":                         ("https://careers.lululemon.com", ""),
-    # Original URL (thejourney.lvmh.com) no longer resolves (DNS failure). Moët
-    # Hennessy is NOT in the LVMH SmartRecruiters tenant already wired up in
-    # SMARTRECRUITERS_COMPANIES (verified live — that tenant is LVMH Beauty/Perfumes
-    # & Cosmetics only, no Moët Hennessy postings). Could not find the real live
-    # careers site in the time available; left as-is pending a working URL.
-    "Moet Hennessy":                     ("https://thejourney.lvmh.com/jobs", ""),
+    # Moët Hennessy: covered by crawl_lvmh (lvmh.com group job hub) — its old
+    # standalone site (thejourney.lvmh.com) is DNS-dead and sat here erroring
+    # silently on every run until a matching London posting was missed.
     # No ATS signature found (custom/JS SPA) — needs browser rendering to identify
     # the real job-listing source.
     "Universal Studios/Parks":           ("https://jobs.universalparks.com", ""),

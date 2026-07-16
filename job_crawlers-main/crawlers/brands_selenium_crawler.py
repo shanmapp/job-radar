@@ -608,6 +608,66 @@ def crawl_man_utd():
     return jobs
 
 
+# ── LVMH group job hub ────────────────────────────────────────────────────────
+# lvmh.com/en/join-us/our-job-offers aggregates every maison (Moët Hennessy,
+# Louis Vuitton, Dior, Sephora, ...). The listing is Algolia-backed and the
+# `query` URL param performs a server-side full-text search, so one page load
+# per role keyword covers the whole group. The underlying /api/search endpoint
+# is Akamai bot-walled (503 to non-browser requests), hence Selenium.
+# Each query page shows the ~10 newest matches (index is timestamp-desc),
+# which is sufficient for a radar polling every 15-60 minutes.
+
+LVMH_QUERIES = ["sponsorship", "partnership", "brand", "licensing", "strategy", "sport"]
+
+def crawl_lvmh():
+    jobs = []
+    driver = make_driver()
+    try:
+        seen = set()
+        for q in LVMH_QUERIES:
+            driver.get(f"https://www.lvmh.com/en/join-us/our-job-offers?query={q}")
+            try:
+                WebDriverWait(driver, 15).until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "a[href*='/join-us/our-job-offers/']")))
+            except Exception:
+                continue  # no results for this keyword
+            time.sleep(2)
+
+            for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/join-us/our-job-offers/']"):
+                href = a.get_attribute("href") or ""
+                title = a.text.strip()
+                if not title or href in seen:
+                    continue
+                seen.add(href)
+
+                # Card layout: Title / MAISON / REFERENCE / ... /
+                # "Place of employment :" / <location> / ...
+                company, location = "LVMH", ""
+                try:
+                    card = a.find_element(By.XPATH,
+                        "./ancestor::*[contains(., 'Place of employment')][1]")
+                    lines = [l.strip() for l in card.text.split("\n") if l.strip()]
+                    if len(lines) > 1 and lines[0].lower() == title.lower():
+                        company = lines[1].title()
+                    for i, line in enumerate(lines):
+                        if line.lower().startswith("place of employment") and i + 1 < len(lines):
+                            location = lines[i + 1]
+                            break
+                except Exception:
+                    pass
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": company, "title": title,
+                                 "location": location, "link": href, "number": href})
+
+        print(f"LVMH hub: {len(jobs)} matching jobs found")
+    except Exception as e:
+        print(f"LVMH hub error: {e}")
+    finally:
+        quit_driver(driver)
+    return jobs
+
+
 # ── TeamWork Online (New York Yankees, LA Lakers) ─────────────────────────────
 
 def _crawl_teamworkonline(company_name, url, default_location=""):
@@ -833,7 +893,7 @@ CUSTOM_CRAWLERS = [
     crawl_ea, crawl_amazon_studios, crawl_apple, crawl_nintendo,
     crawl_patagonia, crawl_notion, crawl_gucci,
     crawl_atp, crawl_man_utd, crawl_yankees, crawl_lakers,
-    crawl_paramount, crawl_ferrero, crawl_nestle,
+    crawl_paramount, crawl_ferrero, crawl_nestle, crawl_lvmh,
 ]
 
 

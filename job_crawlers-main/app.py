@@ -11,12 +11,13 @@ from crawlers.f1_http_crawler import crawl_aston_martin, crawl_ferrari
 from crawlers.f1_selenium_crawler import crawl_mclaren, crawl_red_bull, crawl_mercedes
 from crawlers.f1_extra_http_crawler import crawl_haas
 from crawlers.f1_extra_selenium_crawler import crawl_alpine, crawl_williams, crawl_cadillac, crawl_sauber, crawl_formula1
-from crawlers.soccer_http_crawler import crawl_arsenal, crawl_liverpool
+from crawlers.soccer_http_crawler import crawl_arsenal, crawl_liverpool, crawl_chelsea_cfcw
 from crawlers.soccer_selenium_crawler import crawl_man_city, crawl_chelsea, crawl_tottenham, crawl_bayern, crawl_psg
 from crawlers.brands_http_crawler import crawl_all_brands_http
 from crawlers.brands_selenium_crawler import crawl_all_brands_selenium
+from crawlers.health import check_sources
 from database.mongo import ensure_company_document, add_jobs_if_not_exists
-from email_config.email_setup import send_email
+from email_config.email_setup import send_email, send_alert
 
 app = Flask(__name__)
 CORS(app)
@@ -40,7 +41,11 @@ def _save_jobs(jobs_list):
     for jobs in jobs_list:
         if jobs:
             try:
-                ensure_company_document(jobs[0]["company"])
+                # A batch can mix companies (brand crawlers return one big list).
+                # Every company needs its document, or add_jobs_if_not_exists's
+                # update_one matches nothing and silently drops the job.
+                for company in {job["company"] for job in jobs}:
+                    ensure_company_document(company)
                 all_new_jobs.extend(add_jobs_if_not_exists(jobs))
             except Exception as e:
                 print(f"DB error: {e}")
@@ -66,7 +71,7 @@ def check_f1_jobs():
         print("No new F1 jobs found")
 
 def check_soccer_jobs():
-    crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_chelsea, crawl_tottenham, crawl_bayern, crawl_psg]
+    crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_chelsea, crawl_chelsea_cfcw, crawl_tottenham, crawl_bayern, crawl_psg]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         results = list(executor.map(_run_crawler, crawlers))
@@ -106,6 +111,31 @@ def check_brand_jobs():
 def handle_check_brands():
     concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_brand_jobs)
     return {"message": "Brand job check started"}, 202
+
+
+def check_crawler_health():
+    """Probe every crawler source host; alert on Telegram if any are dead.
+
+    A dead source otherwise fails silently (caught exception, empty result)
+    and looks identical to "no matching jobs" — this is how a Moët Hennessy
+    posting was missed. Alerts repeat daily until the source is fixed."""
+    try:
+        dead = check_sources()
+    except Exception as e:
+        print(f"Health check error: {e}")
+        return
+    if dead:
+        lines = "\n".join(f"- `{host}`: {err}" for host, err in sorted(dead.items()))
+        try:
+            send_alert(f"*Crawler health alert*\nUnreachable job sources:\n{lines}")
+        except Exception as e:
+            print(f"Health alert send error: {e}")
+
+
+@app.route('/health', methods=['GET'])
+def handle_check_health():
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_crawler_health)
+    return {"message": "Source health check started"}, 202
 
 UK_TZ = pytz.timezone("Europe/London")
 EST_TZ = pytz.timezone("America/New_York")
@@ -153,6 +183,10 @@ def schedule_all_crawlers():
                 id=job_id
             )
             print(f"Scheduled {fn.__name__} (interval: {initial_interval}min)")
+    if not scheduler.get_job("source_health"):
+        scheduler.add_job(check_crawler_health, 'cron', hour=9, minute=0,
+                          timezone=EST_TZ, id="source_health")
+        print("Scheduled daily source health check (9am EST)")
 
 schedule_all_crawlers()
 
