@@ -14,7 +14,8 @@ _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWOR
 # them directly as server-side location queries; lowercased below for matching.
 TARGET_COUNTRIES = [
     "United Kingdom", "Australia", "Austria", "Denmark", "Finland", "France",
-    "Germany", "Hong Kong", "Italy", "Korea", "Norway", "Sweden", "Switzerland",
+    "Germany", "Hong Kong", "Ireland", "Italy", "Japan", "Korea",
+    "Netherlands", "Norway", "Poland", "Spain", "Sweden", "Switzerland",
 ]
 
 # Matched as whole words/phrases within the location string.
