@@ -131,10 +131,8 @@ SELENIUM_COMPANIES = {
 # straight to writing a bespoke platform crawler (grouped like WORKDAY_COMPANIES)
 # instead of re-fingerprinting from scratch.
 HEURISTIC_COMPANIES = {
-    # Confirmed iCIMS (subdomain publicisgroupe.icims.com). /jobs/search is a JS SPA
-    # (Jibe widget on top of iCIMS); direct requests to the icims.com subdomain hit
-    # an Auth0 login wall / rate limit, so no unauthenticated JSON API found.
-    "Publicis":                         ("https://careers.publicisgroupe.com/jobs", ""),
+    # Publicis: moved to the Jibe JSON API crawler (JIBE_COMPANIES in
+    # brands_http_crawler) — careers.publicisgroupe.com/api/jobs is open JSON.
     # PepsiCo (incl. Frito-Lay, Gatorade, SodaStream): moved to crawl_pepsico in
     # brands_http_crawler — the Jibe front end's /api/jobs endpoint is plain
     # stable JSON (it was the HTML search page that was bot-flaky, not the API).
@@ -163,9 +161,8 @@ HEURISTIC_COMPANIES = {
     # signature in the served HTML; likely calls an internal API from client JS that
     # wasn't discoverable via static asset inspection alone.
     "Kraft Heinz":                       ("https://careers.kraftheinzcompany.com", ""),
-    # Confirmed iCIMS (dashboard-en-generalmills2.icims.com, a Jibe/iCIMS combo — same
-    # situation as Publicis/PepsiCo above).
-    "General Mills":                     ("https://careers.generalmills.com/careers", ""),
+    # General Mills: moved to the Jibe JSON API crawler (JIBE_COMPANIES in
+    # brands_http_crawler) — careers.generalmills.com/api/jobs is open JSON.
     # Confirmed Avature (lululemonincchina.avature.cn seen for the CN career flow);
     # the primary careers.lululemon.com flow is JS-rendered with no SSR job data.
     "Lululemon":                         ("https://careers.lululemon.com", ""),

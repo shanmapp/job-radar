@@ -10,9 +10,22 @@ ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
 
 _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWORDS))
 
-LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
-                  "italy", "italia", "maranello", "milan", "rome", "turin",
-                  "switzerland", "swiss", "geneva", "zurich", "basel"]
+# Countries in scope. Display-cased so API-level crawlers (e.g. Jibe) can use
+# them directly as server-side location queries; lowercased below for matching.
+TARGET_COUNTRIES = [
+    "United Kingdom", "Australia", "Austria", "Belgium", "Chile", "Costa Rica",
+    "Croatia", "Czech Republic", "Denmark", "Estonia", "Finland", "France",
+    "Germany", "Greece", "Hong Kong", "Iceland", "Ireland", "Italy", "Japan",
+    "Korea", "Latvia", "Lithuania", "Luxembourg", "Netherlands", "New Zealand",
+    "Norway", "Poland", "Portugal", "San Marino", "Slovakia", "Slovenia",
+    "Spain", "Sweden", "Switzerland", "Taiwan",
+]
+
+# Matched as whole words/phrases within the location string.
+LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
+    "uk", "england", "scotland", "wales", "czechia", "italia", "swiss",
+    "london", "maranello", "milan", "rome", "turin", "geneva", "zurich", "basel",
+]
 
 # Titles containing these words are senior/experienced roles — skip them.
 # Also matched as whole words, so padding like " sr " / "vp " is unnecessary.
@@ -48,7 +61,9 @@ def is_relevant(title):
     return matches_keywords(title) and is_entry_level(title)
 
 
+_LOCATION_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(t) for t in LOCATION_TERMS))
+
 def matches_location(location_str):
     if not location_str:
         return False
-    return any(term in location_str.lower() for term in LOCATION_TERMS)
+    return _LOCATION_RE.search(location_str.lower()) is not None

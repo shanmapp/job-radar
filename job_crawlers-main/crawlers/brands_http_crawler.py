@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location
+from crawlers.filters import is_relevant, matches_location, TARGET_COUNTRIES
 """
 HTTP-based crawlers for brand companies using Greenhouse, Lever, SmartRecruiters, and Workday APIs.
 All functions return a list of job dicts: {company, title, location, link, number}
@@ -335,44 +335,85 @@ def crawl_all_consider():
 
 # ── Combined entry point ─────────────────────────────────────────────────────
 
-# ── PepsiCo (Jibe/iCIMS JSON API) ────────────────────────────────────────────
+# ── Jibe/iCIMS careers front ends ────────────────────────────────────────────
+# Jibe sites expose a plain JSON API at <domain>/api/jobs (NOT under sub-paths
+# like /main — those serve the Angular shell). No auth, stable across
+# consecutive requests; it was the HTML search page that was bot-flaky.
+# Params: location, keywords, page, limit (limit raises the 10-per-page
+# default; num_items/pageSize don't work). meta_data.canonical_url gives the
+# public job link.
 
-PEPSICO_LOCATIONS = ["United Kingdom", "Italy", "Switzerland"]
+JIBE_COMPANIES = {
+    # company: (domain, honors server-side ?location= filtering)
+    # PepsiCo covers Frito-Lay, Gatorade and SodaStream on the same site.
+    "PepsiCo":       ("https://www.pepsicojobs.com", True),
+    "Publicis":      ("https://careers.publicisgroupe.com", True),
+    # General Mills ignores the location param — small board, scan it all.
+    "General Mills": ("https://careers.generalmills.com", False),
+}
 
-def crawl_pepsico():
-    """pepsicojobs.com's Jibe front end exposes /api/jobs — plain JSON, no
-    auth, stable across consecutive requests (the HTML search page is the
-    part that's bot-flaky; this API is not). Covers Frito-Lay, Gatorade and
-    SodaStream too — all share the same careers site. The server-side
-    `location` param is fuzzy (multi-location postings from other countries
-    leak in), so location is still verified locally."""
+_JIBE_PAGE_CAP = 10  # safety valve: never pull more than 1000 jobs per query
+
+
+def _jibe_pages(base, extra_params):
+    """Yield /api/jobs payloads, following pagination until exhausted."""
+    page = 1
+    while page <= _JIBE_PAGE_CAP:
+        params = {"page": page, "limit": 100}
+        params.update(extra_params)
+        r = requests.get(f"{base}/api/jobs", params=params, timeout=20,
+                         headers={"User-Agent": UA, "Accept": "application/json"})
+        r.raise_for_status()
+        data = r.json()
+        yield data
+        if page * 100 >= (data.get("totalCount") or 0):
+            return
+        page += 1
+
+
+def _crawl_jibe(company_name, base, location_filtering):
     jobs, seen = [], set()
-    for loc_query in PEPSICO_LOCATIONS:
+
+    def consume(payload):
+        for item in payload.get("jobs", []):
+            data = item.get("data", {})
+            title = (data.get("title") or "").strip()
+            location = data.get("full_location") or data.get("short_location") or ""
+            slug = str(data.get("slug") or data.get("req_id") or "")
+            if not slug or slug in seen:
+                continue
+            seen.add(slug)
+            link = ((data.get("meta_data") or {}).get("canonical_url")
+                    or f"{base}/jobs/{slug}?lang=en-us")
+
+            # Server-side location matching is fuzzy (multi-location postings
+            # from other countries leak in), so always re-verify locally.
+            if is_relevant(title) and matches_location(location):
+                jobs.append({"company": company_name, "title": title,
+                             "location": location, "link": link, "number": slug})
+
+    if location_filtering:
+        for country in TARGET_COUNTRIES:
+            try:
+                for payload in _jibe_pages(base, {"location": country}):
+                    consume(payload)
+            except Exception as e:
+                print(f"{company_name} (Jibe) error for {country}: {e}")
+    else:
         try:
-            r = requests.get(
-                "https://www.pepsicojobs.com/api/jobs",
-                params={"location": loc_query, "page": 1, "limit": 100},
-                timeout=20,
-                headers={"User-Agent": UA, "Accept": "application/json"}
-            )
-            r.raise_for_status()
-            for item in r.json().get("jobs", []):
-                data = item.get("data", {})
-                title = (data.get("title") or "").strip()
-                location = data.get("full_location") or data.get("short_location") or ""
-                slug = str(data.get("slug") or data.get("req_id") or "")
-                if not slug or slug in seen:
-                    continue
-                seen.add(slug)
-                link = f"https://www.pepsicojobs.com/main/jobs/{slug}?lang=en-us"
-
-                if is_relevant(title) and matches_location(location):
-                    jobs.append({"company": "PepsiCo", "title": title,
-                                 "location": location, "link": link, "number": slug})
+            for payload in _jibe_pages(base, {}):
+                consume(payload)
         except Exception as e:
-            print(f"PepsiCo (Jibe) error for {loc_query}: {e}")
+            print(f"{company_name} (Jibe) error: {e}")
 
-    print(f"PepsiCo: {len(jobs)} matching jobs")
+    print(f"{company_name}: {len(jobs)} matching jobs")
+    return jobs
+
+
+def crawl_all_jibe():
+    jobs = []
+    for company, (base, location_filtering) in JIBE_COMPANIES.items():
+        jobs.extend(_crawl_jibe(company, base, location_filtering))
     return jobs
 
 
@@ -386,5 +427,5 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_breezy())
     jobs.extend(crawl_all_pinpoint())
     jobs.extend(crawl_all_consider())
-    jobs.extend(crawl_pepsico())
+    jobs.extend(crawl_all_jibe())
     return jobs
