@@ -13,17 +13,13 @@ _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWOR
 # Countries in scope. Display-cased so API-level crawlers (e.g. Jibe) can use
 # them directly as server-side location queries; lowercased below for matching.
 TARGET_COUNTRIES = [
-    "United Kingdom", "Australia", "Austria", "Belgium", "Chile", "Costa Rica",
-    "Croatia", "Czech Republic", "Denmark", "Estonia", "Finland", "France",
-    "Germany", "Greece", "Hong Kong", "Iceland", "Ireland", "Italy", "Japan",
-    "Korea", "Latvia", "Lithuania", "Luxembourg", "Netherlands", "New Zealand",
-    "Norway", "Poland", "Portugal", "San Marino", "Slovakia", "Slovenia",
-    "Spain", "Sweden", "Switzerland", "Taiwan",
+    "United Kingdom", "Australia", "Austria", "Denmark", "Finland", "France",
+    "Germany", "Hong Kong", "Italy", "Korea", "Norway", "Sweden", "Switzerland",
 ]
 
 # Matched as whole words/phrases within the location string.
 LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
-    "uk", "england", "scotland", "wales", "czechia", "italia", "swiss",
+    "uk", "england", "scotland", "wales", "italia", "swiss",
     "london", "maranello", "milan", "rome", "turin", "geneva", "zurich", "basel",
 ]
 
