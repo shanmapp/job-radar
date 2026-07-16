@@ -5,7 +5,8 @@ import re
 # relying on a stem matching its own plural.
 ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
                  "partnership", "partnerships", "sponsorship", "sponsorships",
-                 "licensing", "sport", "sports"]
+                 "licensing", "sport", "sports",
+                 "creative", "designer", "designers"]
 
 _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWORDS))
 
