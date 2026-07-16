@@ -82,6 +82,48 @@ def crawl_liverpool():
     return jobs
 
 
+def crawl_chelsea_cfcw():
+    """Chelsea FC Holdings Ltd runs a separate UKG Workforce Ready ATS (covers CFCW/commercial
+    roles not listed on the CoreHR portal used by crawl_chelsea)."""
+    jobs = []
+    try:
+        base = "https://secure.workforceready.eu"
+        resp = requests.get(
+            f"{base}/ta/rest/ui/recruitment/companies/%7C6189861/job-requisitions",
+            params={"offset": 1, "size": 50, "sort": "desc", "ein_id": "", "lang": "en-GB"},
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            },
+            timeout=15
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        reqs = data.get("job_requisitions", [])
+
+        for req in reqs:
+            title = req.get("job_title", "").strip()
+            job_id = req.get("id")
+            loc = req.get("location", {})
+            location = ", ".join(filter(None, [loc.get("city"), loc.get("country")])) or "London, UK"
+            link = f"{base}/ta/6189861.careers?ApplyToJob={job_id}&full_apply=&jobid={job_id}"
+
+            if is_relevant(title):
+                jobs.append({
+                    "company": "Chelsea FC",
+                    "title": title,
+                    "location": location,
+                    "link": link,
+                    "number": str(job_id)
+                })
+
+        print(f"Chelsea FC (Workforce Ready): {len(jobs)} matching jobs (from {len(reqs)} total)")
+    except Exception as e:
+        print(f"Chelsea Workforce Ready crawler error: {e}")
+
+    return jobs
+
+
 def crawl_psg():
     jobs = []
     try:
