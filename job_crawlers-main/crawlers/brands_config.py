@@ -24,6 +24,9 @@ GREENHOUSE_COMPANIES = {
     # mrbeastjobs.com is a custom front-end whose own meta description says
     # "synced from public Greenhouse boards"; confirmed live via job-boards.greenhouse.io
     "MrBeast":              "mrbeastyoutube",
+    # Confirmed via the api.greenhouse.io reference inside wk.com/jobs's Gatsby
+    # JS bundle; board "wk" verified live (Portland HQ + Slime Mold Productions).
+    "Wieden+Kennedy":       "wk",
 }
 
 LEVER_COMPANIES = {
@@ -54,6 +57,9 @@ TEAMTAILOR_COMPANIES = {
     "LOLA":      "lolamullenlowe.teamtailor.com",
     "DixonBaxi": "joinus.dixonbaxi.com",
     "Saffron":   "saffron.teamtailor.com",
+    "Formula E": "formulae.teamtailor.com",
+    # careers.juventus.com is a Teamtailor custom domain; /jobs.json confirmed live.
+    "Juventus":  "careers.juventus.com",
 }
 
 # Breezy HR: {company name: subdomain slug}
@@ -65,6 +71,38 @@ BREEZY_COMPANIES = {
 PINPOINT_COMPANIES = {
     "FIFA": "jobs.fifa.com",
     "Premier League": "premierleague.pinpointhq.com",
+}
+
+# Jobylon (ATS): {company name: (numeric company id, default country appended
+# to city-only locations)}. The uefa.com jobs pages block plain HTTP clients
+# (Akamai), but the jobs are served by Jobylon, whose CDN embed endpoint
+# (cdn.jobylon.com/jobs/companies/<id>/embed/v1/) is open and curl-friendly.
+# Company id found in the emp.jobylon.com job detail pages ("company_id = 2972").
+JOBYLON_COMPANIES = {
+    # UEFA postings list city only ("Nyon"); HQ country appended for filtering.
+    "UEFA": ("2972", "Switzerland"),
+}
+
+# Phenom People careers sites: {company name: careers site base URL}.
+# Phenom's /widgets endpoint accepts an unauthenticated JSON POST
+# (ddoKey=refineSearch) and returns the full job index with pagination —
+# unlike the WK Kellogg tenant noted in HEURISTIC_COMPANIES, these two were
+# confirmed live returning real postings.
+PHENOM_COMPANIES = {
+    "Mars":        "https://careers.mars.com",
+    "New Balance": "https://jobs.newbalance.com",
+}
+
+# SAP SuccessFactors Career Site Builder sites that server-render their job
+# lists (unlike the login-walled career4/career5 tenants in HEURISTIC_COMPANIES,
+# these public CSB front ends return parseable HTML to a plain GET).
+# {company name: (host, listing path, markup style)}
+# - "csb": stock CSB markup, paginated with ?startrow=N (10 rows/page).
+# - "listing": Heineken has no /search/ (404); its custom /Job-Listing uses
+#   job-list-item blocks and a composite ?page=0,0,N parameter.
+SUCCESSFACTORS_COMPANIES = {
+    "Under Armour": ("careers.underarmour.com", "/search/", "csb"),
+    "Heineken":     ("careers.theheinekencompany.com", "/Job-Listing", "listing"),
 }
 
 # Consider (ATS): {company name: (careers host, board id)}
@@ -93,6 +131,11 @@ WORKDAY_COMPANIES = {
     "Warner Music (US)":     "https://wmg.wd1.myworkdayjobs.com/WMGUS",
     "Warner Music (Global)": "https://wmg.wd1.myworkdayjobs.com/WMGGLOBAL",
     "Universal Music Group": "https://umusic.wd5.myworkdayjobs.com/UMGUS",
+    "Diageo":           "https://diageo.wd3.myworkdayjobs.com/Diageo_Careers",
+    # dentsu group global board (tenant name is the old Dentsu Aegis Network)
+    "Dentsu":           "https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL",
+    # IMG has no standalone board — it hires through parent Endeavor's WME/IMG tenant
+    "IMG (Endeavor)":   "https://wmeimg.wd1.myworkdayjobs.com/WMEGRP",
     # ESPN roles live in the Disney Workday tenant — filtered via search query, not a separate site
     "ESPN":             "https://disney.wd5.myworkdayjobs.com/disneycareer?q=ESPN",
     # Lippincott is on parent Marsh McLennan's Workday tenant — filtered via search query
@@ -131,6 +174,21 @@ SELENIUM_COMPANIES = {
 # the confirmed platform + tenant so a future pass with real browser access can go
 # straight to writing a bespoke platform crawler (grouped like WORKDAY_COMPANIES)
 # instead of re-fingerprinting from scratch.
+# 2026-07 club/agency fingerprinting pass — requested companies with NO usable
+# public job source (documented here so nobody re-fingerprints them; per the
+# Moët Hennessy lesson, no dead config entries are kept for them):
+# - Real Madrid: no public job portal at all — hires via LinkedIn/agencies only.
+# - FC Barcelona: same; no careers portal on fcbarcelona.com (the "Job Center"
+#   is an ex-players service).
+# - AC Milan: acmilan.com/en/club/work-with-us is CV-by-email
+#   (hrsupport@acmilan.com); no listings to crawl.
+# - Pentagram: pentagram.com/careers is mailto-only per studio; no listings.
+# - Omnicom: no group-wide job board; per-agency sites only (the main one,
+#   us-careers.omnicommediagroup.com, is US-only — out of location scope).
+# - AFC Ajax: werkenbij.ajax.nl is an AFAS InSite portal; the vacancy list is a
+#   JS widget ("Geen gegevens om te tonen" without JS) and vacancy URLs use
+#   /vacaturebeschrijvingen/... so the generic a[href*='job'] heuristic can't
+#   see them either. Needs a bespoke AFAS crawler with a real browser session.
 HEURISTIC_COMPANIES = {
     # Publicis: moved to the Jibe JSON API crawler (JIBE_COMPANIES in
     # brands_http_crawler) — careers.publicisgroupe.com/api/jobs is open JSON.

@@ -8,8 +8,10 @@ import re
 from crawlers.brands_config import (
     GREENHOUSE_COMPANIES, LEVER_COMPANIES, SMARTRECRUITERS_COMPANIES,
     WORKABLE_COMPANIES, TEAMTAILOR_COMPANIES, BREEZY_COMPANIES, PINPOINT_COMPANIES,
-    CONSIDER_COMPANIES,
+    CONSIDER_COMPANIES, JOBYLON_COMPANIES, PHENOM_COMPANIES,
+    SUCCESSFACTORS_COMPANIES,
 )
+import html as html_lib
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
@@ -333,6 +335,230 @@ def crawl_all_consider():
     return jobs
 
 
+# ── Jobylon ──────────────────────────────────────────────────────────────────
+# The CDN embed endpoint returns a JS snippet containing the rendered job list
+# HTML; job link slugs and per-job "Location:" values are regex-parsed from it.
+
+def _crawl_jobylon(company_name, company_id, default_country):
+    jobs = []
+    try:
+        r = requests.get(
+            f"https://cdn.jobylon.com/jobs/companies/{company_id}/embed/v1/",
+            params={"target": "jobylon-jobs-widget", "page_size": 100},
+            timeout=20, headers={"User-Agent": UA}
+        )
+        r.raise_for_status()
+        # Each job block: id="jobylon-job-<id>" ... job-title>TITLE< ...
+        # jobylon-location"><strong>Location:</strong> CITY</li>
+        blocks = re.split(r'id="jobylon-job-(\d+)"', r.text)[1:]
+        for job_id, block in zip(blocks[0::2], blocks[1::2]):
+            tm = re.search(r'jobylon-job-title[^>]*>([^<]+)<', block)
+            lm = re.search(r'jobylon-location"><strong>[^<]*</strong>\s*([^<]+)<', block)
+            sm = re.search(r'jobs/(%s-[a-z0-9-]+)' % job_id, r.text)
+            title = html_lib.unescape(tm.group(1).strip()) if tm else ""
+            location = html_lib.unescape(lm.group(1).strip()) if lm else ""
+            if location and default_country.lower() not in location.lower():
+                location = f"{location}, {default_country}"
+            link = (f"https://emp.jobylon.com/jobs/{sm.group(1)}/" if sm
+                    else f"https://emp.jobylon.com/jobs/{job_id}/")
+
+            if is_relevant(title) and matches_location(location):
+                jobs.append({"company": company_name, "title": title,
+                             "location": location, "link": link, "number": job_id})
+
+        print(f"{company_name}: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"{company_name} (Jobylon) error: {e}")
+    return jobs
+
+
+def crawl_all_jobylon():
+    jobs = []
+    for company, (company_id, default_country) in JOBYLON_COMPANIES.items():
+        jobs.extend(_crawl_jobylon(company, company_id, default_country))
+    return jobs
+
+
+# ── Phenom People ────────────────────────────────────────────────────────────
+# The /widgets endpoint takes an unauthenticated JSON POST and pages through
+# the whole external job index 100 at a time.
+
+_PHENOM_PAGE_CAP = 10
+
+
+def _crawl_phenom(company_name, base):
+    jobs = []
+    try:
+        seen_total = None
+        for start in range(0, _PHENOM_PAGE_CAP * 100, 100):
+            payload = {"lang": "en_us", "deviceType": "desktop", "country": "us",
+                       "pageName": "search-results", "ddoKey": "refineSearch",
+                       "from": start, "jobs": True, "counts": True,
+                       "all_fields": ["category", "country"], "size": 100,
+                       "siteType": "external", "keywords": "", "global": True,
+                       "selected_fields": {}, "locationData": {}}
+            r = requests.post(f"{base}/widgets", json=payload, timeout=25,
+                              headers={"User-Agent": UA})
+            r.raise_for_status()
+            data = r.json().get("refineSearch", {})
+            seen_total = data.get("totalHits") or 0
+            batch = data.get("data", {}).get("jobs", [])
+            if not batch:
+                break
+            for job in batch:
+                title = (job.get("title") or "").strip()
+                location = job.get("location") or ", ".join(filter(None, [
+                    job.get("city"), job.get("state"), job.get("country")]))
+                job_id = job.get("jobId") or job.get("reqId") or ""
+                # applyUrl points at the underlying ATS apply form; strip the
+                # trailing /apply to land on the readable posting instead.
+                link = re.sub(r"/apply$", "", job.get("applyUrl") or "") or \
+                    f"{base}/job/{job.get('jobSeqNo', '')}"
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": company_name, "title": title,
+                                 "location": location, "link": link,
+                                 "number": job_id})
+            if start + 100 >= seen_total:
+                break
+
+        print(f"{company_name}: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"{company_name} (Phenom) error: {e}")
+    return jobs
+
+
+def crawl_all_phenom():
+    jobs = []
+    for company, base in PHENOM_COMPANIES.items():
+        jobs.extend(_crawl_phenom(company, base))
+    return jobs
+
+
+# ── SAP SuccessFactors (server-rendered Career Site Builder sites) ───────────
+# No JSON API, but these sites return the full job list as plain HTML.
+# Under Armour uses the stock CSB markup (jobTitle-link anchors + location-value
+# divs, paginated via ?startrow=N); Heineken's custom /Job-Listing uses
+# job-list-item blocks with <p class="nation"> locations and a composite
+# ?page=0,0,N parameter (three paged widgets share it; ours is the third).
+
+_SF_PAGE_CAP = 60  # pages; both sites serve 10 jobs/page
+
+# Stock CSB locations use ISO country codes ("London, GB, W1F 7PS"), which the
+# name-based location filter can't see — expand codes for the target countries.
+_ISO_COUNTRIES = {
+    "GB": "United Kingdom", "AU": "Australia", "AT": "Austria", "DK": "Denmark",
+    "FI": "Finland", "FR": "France", "DE": "Germany", "HK": "Hong Kong",
+    "IE": "Ireland", "IT": "Italy", "JP": "Japan", "KR": "Korea",
+    "NL": "Netherlands", "NO": "Norway", "PL": "Poland", "ES": "Spain",
+    "SE": "Sweden", "CH": "Switzerland",
+}
+
+
+def _expand_iso_location(location):
+    parts = [p.strip() for p in location.split(",")]
+    return ", ".join(_ISO_COUNTRIES.get(p, p) for p in parts)
+
+
+def _crawl_successfactors(company_name, host, path, style):
+    jobs, seen = [], set()
+    try:
+        for page in range(_SF_PAGE_CAP):
+            params = ({"startrow": page * 10} if style == "csb"
+                      else {"page": f"0,0,{page}"})
+            r = requests.get(f"https://{host}{path}", params=params,
+                             timeout=20, headers={"User-Agent": UA})
+            if style == "csb":
+                titles = dict(re.findall(
+                    r'class="jobTitle-link[^"]*"[^>]*href="/job/[^"]*?/(\d+)/"[^>]*>'
+                    r'\s*([^<]+?)\s*<', r.text))
+                hrefs = {jid: href for href, jid in re.findall(
+                    r'class="jobTitle-link[^"]*"[^>]*href="(/job/[^"]*?/(\d+)/)"',
+                    r.text)}
+                locs = dict(re.findall(
+                    r'id="job-(\d+)-desktop-section-location-value"[^>]*>'
+                    r'\s*([^<]+?)\s*<', r.text))
+                page_jobs = [(hrefs.get(jid, ""), title,
+                              _expand_iso_location(locs.get(jid, "")))
+                             for jid, title in titles.items()]
+            else:
+                blocks = r.text.split('class="job-list-item"')[1:]
+                page_jobs = []
+                for block in blocks:
+                    tm = re.search(r'<a href="(/job/[^"]+)"[^>]*>([^<]+)</a>', block)
+                    lm = re.search(r'class="nation"[^>]*>\s*([^<]+?)\s*<', block)
+                    if tm:
+                        page_jobs.append((tm.group(1), tm.group(2),
+                                          lm.group(1) if lm else ""))
+            new = [(h, t, l) for h, t, l in page_jobs if h and h not in seen]
+            if not new:
+                break
+            for href, title, location in new:
+                seen.add(href)
+                title = html_lib.unescape(title)
+                location = html_lib.unescape(location)
+                number = href.rstrip("/").rsplit("/", 1)[-1]
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": company_name, "title": title,
+                                 "location": location,
+                                 "link": f"https://{host}{href}",
+                                 "number": number})
+
+        print(f"{company_name}: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"{company_name} (SuccessFactors) error: {e}")
+    return jobs
+
+
+def crawl_all_successfactors():
+    jobs = []
+    for company, (host, path, style) in SUCCESSFACTORS_COMPANIES.items():
+        jobs.extend(_crawl_successfactors(company, host, path, style))
+    return jobs
+
+
+# ── PUMA (custom Elasticsearch endpoint) ─────────────────────────────────────
+# about.puma.com/dd_job_search proxies an Elasticsearch index of all postings
+# and accepts arbitrary ES queries unauthenticated. Documents carry title,
+# city, country and the public posting path in _source.url. The server clamps
+# size to 10 regardless of the requested value, so page with `from`.
+
+def crawl_puma():
+    jobs = []
+    try:
+        start, total = 0, None
+        while total is None or start < min(total, 1000):
+            r = requests.post(
+                "https://about.puma.com/dd_job_search",
+                json={"from": start, "size": 10,
+                      "query": {"bool": {"must": [{"term": {"language": "en"}}]}}},
+                timeout=25, headers={"User-Agent": UA})
+            r.raise_for_status()
+            hits = r.json().get("hits", {})
+            total = (hits.get("total") or {}).get("value", 0)
+            batch = hits.get("hits", [])
+            if not batch:
+                break
+            for hit in batch:
+                src = hit.get("_source", {})
+                title = (src.get("title") or "").strip()
+                location = ", ".join(filter(None, [src.get("city"), src.get("country")]))
+                link = f"https://about.puma.com{src.get('url', '')}"
+                number = str(src.get("entity_id", ""))
+
+                if is_relevant(title) and matches_location(location):
+                    jobs.append({"company": "Puma", "title": title,
+                                 "location": location, "link": link,
+                                 "number": number})
+            start += 10
+
+        print(f"Puma: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"Puma (dd_job_search) error: {e}")
+    return jobs
+
+
 # ── Combined entry point ─────────────────────────────────────────────────────
 
 # ── Jibe/iCIMS careers front ends ────────────────────────────────────────────
@@ -428,4 +654,8 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_pinpoint())
     jobs.extend(crawl_all_consider())
     jobs.extend(crawl_all_jibe())
+    jobs.extend(crawl_all_jobylon())
+    jobs.extend(crawl_all_phenom())
+    jobs.extend(crawl_all_successfactors())
+    jobs.extend(crawl_puma())
     return jobs
