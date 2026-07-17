@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location
+from crawlers.filters import is_relevant, matches_location, passes_filters
 """HTTP-based crawlers for Haas F1 (BambooHR API)."""
 import requests
 
@@ -30,7 +30,7 @@ def crawl_haas():
             job_id = job.get("id", "")
             link = f"https://haasf1team.bamboohr.com/careers/{job_id}"
 
-            if is_relevant(title) and _haas_location_ok(city):
+            if _haas_location_ok(city) and passes_filters(title):
                 jobs.append({
                     "company": "Haas F1",
                     "title": title,

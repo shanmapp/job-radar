@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location
+from crawlers.filters import is_relevant, matches_location, passes_filters
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -44,7 +44,7 @@ def crawl_mclaren():
             except Exception:
                 location = ""
 
-            if is_relevant(title) and matches_location(location):
+            if passes_filters(title, location):
                 jobs.append({
                     "company": "McLaren Racing",
                     "title": title,
@@ -87,7 +87,7 @@ def crawl_red_bull():
         # Pair titles with IDs (they appear in the same order)
         for i, title in enumerate(title_lines):
             link = f"https://careers.redbullracing.com/en/sites/CX_2/job/{job_ids[i]}" if i < len(job_ids) else "https://careers.redbullracing.com/en/sites/CX_2/jobs"
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Red Bull Racing",
                     "title": title.title(),
@@ -124,7 +124,7 @@ def crawl_mercedes():
                 # Mercedes is based in Brackley, UK — all roles UK unless stated otherwise
                 location = "Brackley, United Kingdom"
 
-                if is_relevant(title):
+                if passes_filters(title):
                     jobs.append({
                         "company": "Mercedes-AMG F1",
                         "title": title,

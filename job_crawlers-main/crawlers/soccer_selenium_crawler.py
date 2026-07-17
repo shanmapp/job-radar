@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location, matches_keywords
+from crawlers.filters import is_relevant, matches_location, passes_filters, matches_keywords
 """Selenium crawlers for soccer clubs: Man City, Chelsea, Tottenham, Bayern Munich, PSG."""
 import time
 from selenium.webdriver.common.by import By
@@ -38,7 +38,7 @@ def crawl_man_city():
             except Exception:
                 location = "Manchester, United Kingdom"
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Manchester City FC",
                     "title": title,
@@ -120,7 +120,7 @@ def crawl_tottenham():
                 continue
             seen.add(title)
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Tottenham Hotspur",
                     "title": title,
@@ -163,7 +163,7 @@ def crawl_bayern():
             except Exception:
                 location = "Munich, Germany"
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Bayern Munich",
                     "title": title,
@@ -218,7 +218,7 @@ def crawl_psg():
                 continue
             seen.add(link)
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Paris Saint-Germain",
                     "title": title,

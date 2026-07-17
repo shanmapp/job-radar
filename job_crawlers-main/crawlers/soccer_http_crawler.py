@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location
+from crawlers.filters import is_relevant, matches_location, passes_filters
 """HTTP-based crawlers for soccer clubs: Arsenal (Teamtailor), Liverpool, PSG (Workday API)."""
 import requests
 from bs4 import BeautifulSoup
@@ -27,7 +27,7 @@ def crawl_arsenal():
                 country = addr.get("addressCountry", "")
                 location = f"{city}, {country}".strip(", ")
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Arsenal FC",
                     "title": title,
@@ -66,7 +66,7 @@ def crawl_liverpool():
             link = link_el.get("href", "")
             location = loc_el.get_text(strip=True) if loc_el else "Liverpool, UK"
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Liverpool FC",
                     "title": title,
@@ -108,7 +108,7 @@ def crawl_chelsea_cfcw():
             location = ", ".join(filter(None, [loc.get("city"), loc.get("country")])) or "London, UK"
             link = f"{base}/ta/6189861.careers?ApplyToJob={job_id}&full_apply=&jobid={job_id}"
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Chelsea FC",
                     "title": title,
@@ -149,7 +149,7 @@ def crawl_psg():
             external_path = posting.get("externalPath", "")
             link = f"https://parissaintgermain.wd3.myworkdayjobs.com/en-US/rejoigneznous{external_path}"
 
-            if is_relevant(title):
+            if passes_filters(title):
                 jobs.append({
                     "company": "Paris Saint-Germain",
                     "title": title,

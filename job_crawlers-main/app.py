@@ -16,6 +16,7 @@ from crawlers.soccer_selenium_crawler import crawl_man_city, crawl_chelsea, craw
 from crawlers.brands_http_crawler import crawl_all_brands_http
 from crawlers.brands_selenium_crawler import crawl_all_brands_selenium
 from crawlers.health import check_sources
+from crawlers.filters import drain_near_misses
 from database.mongo import ensure_company_document, add_jobs_if_not_exists
 from email_config.email_setup import send_email, send_alert
 
@@ -132,6 +133,36 @@ def check_crawler_health():
             print(f"Health alert send error: {e}")
 
 
+def send_near_miss_digest():
+    """Weekly Telegram digest of near-misses (in-scope location, title failed
+    the role keywords). Makes silent filter drops reviewable — the NBA
+    internship, PL Kicks and Amplify U misses would all have shown up here."""
+    try:
+        items = drain_near_misses()
+    except Exception as e:
+        print(f"Near-miss drain error: {e}")
+        return
+    if not items:
+        return
+    _CAP = 80  # keep the Telegram message readable
+    lines = "\n".join(f"- {title} ({loc})" if loc else f"- {title}"
+                      for title, loc in items[:_CAP])
+    extra = f"\n…and {len(items) - _CAP} more" if len(items) > _CAP else ""
+    try:
+        send_alert("*Weekly near-miss digest*\n"
+                   f"{len(items)} in-scope jobs were dropped by the role-keyword "
+                   "filter this week. If any look interesting, the keyword list "
+                   f"needs widening:\n{lines}{extra}")
+    except Exception as e:
+        print(f"Near-miss digest send error: {e}")
+
+
+@app.route('/nearmisses', methods=['GET'])
+def handle_near_misses():
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(send_near_miss_digest)
+    return {"message": "Near-miss digest queued"}, 202
+
+
 @app.route('/health', methods=['GET'])
 def handle_check_health():
     concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_crawler_health)
@@ -187,6 +218,11 @@ def schedule_all_crawlers():
         scheduler.add_job(check_crawler_health, 'cron', hour=9, minute=0,
                           timezone=EST_TZ, id="source_health")
         print("Scheduled daily source health check (9am EST)")
+    if not scheduler.get_job("near_miss_digest"):
+        scheduler.add_job(send_near_miss_digest, 'cron', day_of_week='sun',
+                          hour=10, minute=0, timezone=EST_TZ,
+                          id="near_miss_digest")
+        print("Scheduled weekly near-miss digest (Sun 10am EST)")
 
 schedule_all_crawlers()
 

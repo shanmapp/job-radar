@@ -1,4 +1,4 @@
-from crawlers.filters import is_relevant, matches_location, ROLE_KEYWORDS
+from crawlers.filters import is_relevant, matches_location, passes_filters, ROLE_KEYWORDS
 import requests
 from bs4 import BeautifulSoup
 
@@ -30,7 +30,7 @@ def crawl_aston_martin():
             location = f"{loc_obj.get('city', '')}, {loc_obj.get('province', '')}".strip(", ")
             link = item.get("url", f"https://astonmartinf1.pinpointhq.com/en/postings/{item.get('id','')}")
 
-            if is_relevant(title) and matches_location(location):
+            if passes_filters(title, location):
                 jobs.append({
                     "company": "Aston Martin F1",
                     "title": title,
@@ -74,7 +74,7 @@ def crawl_ferrari():
                 loc_val = tile.select_one("[id$='-location-value']")
                 location = loc_val.get_text(strip=True) if loc_val else ""
 
-                if not matches_location(location) or not is_relevant(title):
+                if not passes_filters(title, location):
                     continue
 
                 seen.add(data_url)
