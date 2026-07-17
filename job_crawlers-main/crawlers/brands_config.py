@@ -193,6 +193,12 @@ SELENIUM_COMPANIES = {
 #   /vacaturebeschrijvingen/... so the generic a[href*='job'] heuristic can't
 #   see them either. Needs a bespoke AFAS crawler with a real browser session.
 HEURISTIC_COMPANIES = {
+    # McDonald's corporate roles are server-rendered at careers.mcdonalds.com
+    # /jobs (links match a[href*='job']), but Akamai 403s plain HTTP clients so
+    # it needs the browser tier. The McDonaldsCorporation SmartRecruiters
+    # tenant (still configured above) is a near-dead shell carrying only a few
+    # stray postings — the raw-pull audit caught it at 4 jobs total.
+    "McDonald's (corporate site)":       ("https://careers.mcdonalds.com/jobs", ""),
     # Publicis: moved to the Jibe JSON API crawler (JIBE_COMPANIES in
     # brands_http_crawler) — careers.publicisgroupe.com/api/jobs is open JSON.
     # PepsiCo (incl. Frito-Lay, Gatorade, SodaStream): moved to crawl_pepsico in

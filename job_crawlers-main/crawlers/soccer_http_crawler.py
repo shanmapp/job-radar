@@ -128,24 +128,38 @@ def crawl_psg():
     jobs = []
     try:
         base = "https://parissaintgermain.wd3.myworkdayjobs.com"
-        resp = requests.post(
-            f"{base}/wday/cxs/parissaintgermain/rejoigneznous/jobs",
-            json={"appliedFacets": {}, "limit": 50, "offset": 0, "searchText": ""},
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-                "Origin": base,
-                "Referer": f"{base}/rejoigneznous",
-            },
-            timeout=15
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        # Workday's CXS API rejects limit > 20 with a plain 400 — this crawler
+        # sat erroring on every run with limit=50 until a raw-pull audit
+        # noticed. Page through 20 at a time instead.
+        postings, offset, total = [], 0, None
+        while total is None or offset < total:
+            resp = requests.post(
+                f"{base}/wday/cxs/parissaintgermain/rejoigneznous/jobs",
+                json={"appliedFacets": {}, "limit": 20, "offset": offset,
+                      "searchText": ""},
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                    "Origin": base,
+                    "Referer": f"{base}/rejoigneznous",
+                },
+                timeout=15
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            total = data.get("total", 0)
+            batch = data.get("jobPostings", [])
+            if not batch:
+                break
+            postings.extend(batch)
+            offset += 20
 
-        for posting in data.get("jobPostings", []):
+        for posting in postings:
             title = posting.get("title", "")
-            location_str = " ".join(posting.get("bulletFields", []))
+            # bulletFields carries the req number, not a location; PSG is a
+            # single-site club so the location is always Paris.
+            location_str = (posting.get("locationsText") or "").strip()
             external_path = posting.get("externalPath", "")
             link = f"https://parissaintgermain.wd3.myworkdayjobs.com/en-US/rejoigneznous{external_path}"
 
