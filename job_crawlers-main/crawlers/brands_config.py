@@ -131,6 +131,9 @@ WORKDAY_COMPANIES = {
     "Warner Music (US)":     "https://wmg.wd1.myworkdayjobs.com/WMGUS",
     "Warner Music (Global)": "https://wmg.wd1.myworkdayjobs.com/WMGGLOBAL",
     "Universal Music Group": "https://umusic.wd5.myworkdayjobs.com/UMGUS",
+    # Separate UK board on the same tenant — the Amplify U trainee postings
+    # (Kings Cross, London) live here, not on UMGUS.
+    "Universal Music UK":    "https://umusic.wd5.myworkdayjobs.com/UMGUK",
     "Diageo":           "https://diageo.wd3.myworkdayjobs.com/Diageo_Careers",
     # dentsu group global board (tenant name is the old Dentsu Aegis Network)
     "Dentsu":           "https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL",
