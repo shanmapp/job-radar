@@ -11,7 +11,10 @@ ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
                  # East Internship Programme" posting (London) was crawled but
                  # dropped — its title contained no role keyword at all.
                  "intern", "interns", "internship", "internships",
-                 "graduate", "graduates", "trainee", "trainees"]
+                 "graduate", "graduates", "trainee", "trainees",
+                 # UK spelling only, on purpose: "program"/"programs" would
+                 # flood-match US software/program-manager titles.
+                 "programme", "programmes"]
 
 _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWORDS))
 
