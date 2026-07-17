@@ -10,6 +10,7 @@ from crawlers.filters import is_relevant, matches_location, passes_filters
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from crawlers.driver import make_driver, quit_driver
 from crawlers.brands_config import WORKDAY_COMPANIES, SELENIUM_COMPANIES, HEURISTIC_COMPANIES
 
@@ -242,23 +243,28 @@ def crawl_ea():
     jobs = []
     driver = make_driver()
     try:
+        # Avature redesign (2026-07): job links moved from ShowJob to
+        # JobDetail, and results are article cards, not table rows. The card
+        # header text is "Title\nCity, Country  •  Role ID …".
         driver.get("https://jobs.ea.com/en_US/careers/SearchJobs/brand OR partnerships OR sponsorship?3_112_3=175297")
         wait = WebDriverWait(driver, 20)
         time.sleep(6)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='ShowJob'], [class*='job'], tr")))
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='JobDetail'], [class*='article__header']")))
         time.sleep(3)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='ShowJob']"):
+        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='JobDetail']"):
             href = a.get_attribute("href")
             title = a.text.strip()
-            if not href or not title or href in seen:
+            # each card repeats the link as a "More Information" anchor
+            if not href or not title or href in seen or title == "More Information":
                 continue
             seen.add(href)
             try:
-                row = a.find_element(By.XPATH, "./ancestor::tr[1]")
-                tds = row.find_elements(By.TAG_NAME, "td")
-                location = tds[1].text.strip() if len(tds) > 1 else "United Kingdom"
+                card = a.find_element(By.XPATH, "./ancestor::*[contains(@class,'article__header')][1]")
+                # second line: "City, Country  •  Role ID NNN  •  ..."
+                lines = [l.strip() for l in card.text.split("\n") if l.strip()]
+                location = lines[1].split("•")[0].strip() if len(lines) > 1 else "United Kingdom"
             except Exception:
                 location = "United Kingdom"
 
@@ -343,42 +349,6 @@ def crawl_nintendo():
     return jobs
 
 
-def crawl_patagonia():
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://www.patagonia.com/jobs-at-patagonia/")
-        wait = WebDriverWait(driver, 20)
-        time.sleep(6)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='job'], [class*='job'], [class*='position']")))
-        time.sleep(3)
-
-        seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='job'], a[href*='career']"):
-            href = a.get_attribute("href")
-            title = a.text.strip()
-            if not href or not title or href in seen or len(title) < 5:
-                continue
-            seen.add(href)
-            try:
-                card = a.find_element(By.XPATH, "./ancestor::*[.//*[contains(@class,'location') or contains(@class,'city')]  ][1]")
-                loc_els = card.find_elements(By.CSS_SELECTOR, "[class*='location'],[class*='city']")
-                location = loc_els[0].text.strip() if loc_els else ""
-            except Exception:
-                location = ""
-
-            if passes_filters(title, location):
-                jobs.append({"company": "Patagonia", "title": title,
-                             "location": location, "link": href, "number": href})
-
-        print(f"Patagonia: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Patagonia error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
-
-
 
 def crawl_gucci():
     jobs = []
@@ -434,7 +404,16 @@ def crawl_atp():
     try:
         driver.get(url)
         wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "careers-ui-job-listing-list-item")))
+        # An empty board renders "New job openings will be added soon" and no
+        # cards — treat that as 0 jobs rather than a timeout error, so the
+        # crawler's output stays distinguishable from real breakage.
+        try:
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "careers-ui-job-listing-list-item")))
+        except TimeoutException:
+            if "job openings will be added" in driver.page_source.lower():
+                print("ATP Tour: 0 matching jobs (board empty)")
+                return jobs
+            raise
         time.sleep(3)
 
         for item in driver.find_elements(By.CSS_SELECTOR, "careers-ui-job-listing-list-item"):
@@ -613,8 +592,7 @@ def crawl_lakers():
 def _crawl_heuristic(company_name, url, default_location=""):
     """Fallback crawler for sites with no recognizable ATS: follows any
     job/career/vacancy-looking link, then looks for a location near it in
-    the DOM. Same resilient pattern already used by crawl_nike/crawl_patagonia
-    above."""
+    the DOM. Same resilient pattern already used by crawl_nike above."""
     jobs = []
     driver = make_driver()
     try:
@@ -779,8 +757,7 @@ def crawl_nestle():
 
 CUSTOM_CRAWLERS = [
     crawl_nike, crawl_adidas, crawl_red_bull_brand,
-    crawl_ea, crawl_apple, crawl_nintendo,
-    crawl_patagonia, crawl_gucci,
+    crawl_ea, crawl_apple, crawl_nintendo, crawl_gucci,
     crawl_atp, crawl_man_utd, crawl_yankees, crawl_lakers,
     crawl_paramount, crawl_ferrero, crawl_nestle, crawl_lvmh,
 ]

@@ -135,6 +135,9 @@ WORKDAY_COMPANIES = {
     # (Kings Cross, London) live here, not on UMGUS.
     "Universal Music UK":    "https://umusic.wd5.myworkdayjobs.com/UMGUK",
     "Diageo":           "https://diageo.wd3.myworkdayjobs.com/Diageo_Careers",
+    # patagonia.com/jobs-at-patagonia embeds this Workday board in an iframe;
+    # the old page-scraping crawler found 0 jobs outside the iframe.
+    "Patagonia":        "https://patagonia.wd503.myworkdayjobs.com/PWCareers",
     # dentsu group global board (tenant name is the old Dentsu Aegis Network)
     "Dentsu":           "https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL",
     # IMG has no standalone board — it hires through parent Endeavor's WME/IMG tenant
@@ -172,7 +175,7 @@ SELENIUM_COMPANIES = {
     "Red Bull":         "https://jobs.redbull.com/gb-en",
     "EA Sports":        "https://jobs.ea.com/en_US/careers/SearchJobs",
     "Nintendo":         "https://careers.nintendo.com/job-openings/",
-    "Patagonia":        "https://www.patagonia.com/jobs-at-patagonia/",
+    # Patagonia moved to WORKDAY_COMPANIES — its jobs live in a Workday iframe
     "Apple":            "https://jobs.apple.com/en-gb/search",
     "Gucci":            "https://www.gucci.com/us/en/st/careers-jobs",
 }
