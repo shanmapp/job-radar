@@ -146,9 +146,27 @@ WORKDAY_COMPANIES = {
     # Mojang (Minecraft) is covered by Greenhouse - no separate Microsoft entry needed
 }
 
+# Ashby (ATS): {company name: job-board slug}. Open JSON API at
+# api.ashbyhq.com/posting-api/job-board/<slug>.
+ASHBY_COMPANIES = {
+    # Notion moved off its JS-only careers page to Ashby; the old Selenium
+    # crawler had been scraping 0 jobs (found by the 2026-07 raw-pull audit).
+    "Notion": "notion",
+}
+
+# Eightfold AI careers sites: {company name: (host, domain param)}. Open JSON
+# API at <host>/api/apply/v2/jobs?domain=<domain>.
+EIGHTFOLD_COMPANIES = {
+    # explore.jobs.netflix.net changed its DOM; the Selenium crawler scraped 0
+    # jobs. The underlying Eightfold API is open and stable.
+    "Netflix": ("https://explore.jobs.netflix.net", "netflix.com"),
+}
+
 # Custom / Selenium-only: {company name: careers_url}
+# Netflix -> EIGHTFOLD_COMPANIES, Notion -> ASHBY_COMPANIES, Amazon Studios ->
+# crawl_amazon_uk (search.json API) — all three Selenium scrapers were
+# returning 0 jobs after site redesigns.
 SELENIUM_COMPANIES = {
-    "Netflix":          "https://explore.jobs.netflix.net/careers",
     "Nike":             "https://careers.nike.com/jobs",
     "Adidas":           "https://careers.adidas-group.com/jobs",
     "Red Bull":         "https://jobs.redbull.com/gb-en",
@@ -156,8 +174,6 @@ SELENIUM_COMPANIES = {
     "Nintendo":         "https://careers.nintendo.com/job-openings/",
     "Patagonia":        "https://www.patagonia.com/jobs-at-patagonia/",
     "Apple":            "https://jobs.apple.com/en-gb/search",
-    "Amazon Studios":   "https://www.amazon.jobs/en/search?base_query=brand+OR+partnerships+OR+sponsorship&loc_query=United+Kingdom",
-    "Notion":           "https://www.notion.so/careers",
     "Gucci":            "https://www.gucci.com/us/en/st/careers-jobs",
 }
 

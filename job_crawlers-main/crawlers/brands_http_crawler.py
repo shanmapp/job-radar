@@ -9,7 +9,7 @@ from crawlers.brands_config import (
     GREENHOUSE_COMPANIES, LEVER_COMPANIES, SMARTRECRUITERS_COMPANIES,
     WORKABLE_COMPANIES, TEAMTAILOR_COMPANIES, BREEZY_COMPANIES, PINPOINT_COMPANIES,
     CONSIDER_COMPANIES, JOBYLON_COMPANIES, PHENOM_COMPANIES,
-    SUCCESSFACTORS_COMPANIES,
+    SUCCESSFACTORS_COMPANIES, ASHBY_COMPANIES, EIGHTFOLD_COMPANIES,
 )
 import html as html_lib
 
@@ -559,6 +559,122 @@ def crawl_puma():
     return jobs
 
 
+# ── Ashby ────────────────────────────────────────────────────────────────────
+
+def _crawl_ashby(company_name, board_slug):
+    jobs = []
+    try:
+        r = requests.get(
+            f"https://api.ashbyhq.com/posting-api/job-board/{board_slug}",
+            timeout=15, headers={"User-Agent": UA})
+        r.raise_for_status()
+        for job in r.json().get("jobs", []):
+            title = job.get("title", "")
+            location = job.get("location", "")
+            link = job.get("jobUrl", "")
+            job_id = job.get("id", "")
+
+            if passes_filters(title, location):
+                jobs.append({"company": company_name, "title": title,
+                             "location": location, "link": link, "number": job_id})
+
+        print(f"{company_name}: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"{company_name} (Ashby) error: {e}")
+    return jobs
+
+
+def crawl_all_ashby():
+    jobs = []
+    for company, slug in ASHBY_COMPANIES.items():
+        jobs.extend(_crawl_ashby(company, slug))
+    return jobs
+
+
+# ── Eightfold AI ─────────────────────────────────────────────────────────────
+
+_EIGHTFOLD_PAGE_CAP = 10
+
+
+def _crawl_eightfold(company_name, host, domain):
+    jobs = []
+    try:
+        count = None
+        for start in range(0, _EIGHTFOLD_PAGE_CAP * 100, 100):
+            r = requests.get(
+                f"{host}/api/apply/v2/jobs",
+                params={"domain": domain, "num": 100, "start": start},
+                timeout=20, headers={"User-Agent": UA})
+            r.raise_for_status()
+            data = r.json()
+            count = data.get("count") or 0
+            batch = data.get("positions", [])
+            if not batch:
+                break
+            for pos in batch:
+                title = (pos.get("name") or "").strip()
+                location = pos.get("location") or ", ".join(pos.get("locations") or [])
+                link = pos.get("canonicalPositionUrl") or f"{host}/careers/job/{pos.get('id')}"
+                job_id = str(pos.get("display_job_id") or pos.get("id") or "")
+
+                if passes_filters(title, location):
+                    jobs.append({"company": company_name, "title": title,
+                                 "location": location, "link": link,
+                                 "number": job_id})
+            if start + 100 >= count:
+                break
+
+        print(f"{company_name}: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"{company_name} (Eightfold) error: {e}")
+    return jobs
+
+
+def crawl_all_eightfold():
+    jobs = []
+    for company, (host, domain) in EIGHTFOLD_COMPANIES.items():
+        jobs.extend(_crawl_eightfold(company, host, domain))
+    return jobs
+
+
+# ── Amazon (UK roles via the public search.json API) ─────────────────────────
+# Replaces the Selenium "Amazon Studios" crawler (its .job-tile selectors died
+# in a redesign). search.json ignores loc_query but honors
+# normalized_country_code[]; locations come back as "GB, London".
+
+_AMAZON_QUERIES = ["brand", "partnerships", "sponsorship", "internship", "graduate"]
+
+
+def crawl_amazon_uk():
+    jobs, seen = [], set()
+    try:
+        for query in _AMAZON_QUERIES:
+            r = requests.get(
+                "https://www.amazon.jobs/en/search.json",
+                params={"base_query": query, "normalized_country_code[]": "GBR",
+                        "result_limit": 100},
+                timeout=20, headers={"User-Agent": UA})
+            r.raise_for_status()
+            for job in r.json().get("jobs", []):
+                job_id = str(job.get("id_icims") or job.get("id") or "")
+                if not job_id or job_id in seen:
+                    continue
+                seen.add(job_id)
+                title = job.get("title", "")
+                location = (job.get("location") or "").replace("GB,", "United Kingdom,")
+                link = "https://www.amazon.jobs" + (job.get("job_path") or "")
+
+                if passes_filters(title, location):
+                    jobs.append({"company": "Amazon", "title": title,
+                                 "location": location, "link": link,
+                                 "number": job_id})
+
+        print(f"Amazon: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"Amazon (search.json) error: {e}")
+    return jobs
+
+
 # ── Combined entry point ─────────────────────────────────────────────────────
 
 # ── Jibe/iCIMS careers front ends ────────────────────────────────────────────
@@ -658,4 +774,7 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_phenom())
     jobs.extend(crawl_all_successfactors())
     jobs.extend(crawl_puma())
+    jobs.extend(crawl_all_ashby())
+    jobs.extend(crawl_all_eightfold())
+    jobs.extend(crawl_amazon_uk())
     return jobs

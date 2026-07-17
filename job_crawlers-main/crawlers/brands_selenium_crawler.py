@@ -118,46 +118,6 @@ def _crawl_generic(company_name, url, job_sel, title_sel, location_sel=None, lin
     return jobs
 
 
-def crawl_netflix():
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://explore.jobs.netflix.net/careers")
-        wait = WebDriverWait(driver, 20)
-        try:
-            driver.find_element(By.XPATH, '//*[contains(text(),"Accept")]').click()
-            time.sleep(1)
-        except Exception:
-            pass
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[class*='job'], [class*='JobCard'], [class*='result'], a[href*='/careers/']")))
-        time.sleep(4)
-
-        seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/careers/jobs/']"):
-            href = a.get_attribute("href")
-            title = a.text.strip() or a.get_attribute("textContent").strip()
-            if not href or not title or href in seen or len(title) < 5:
-                continue
-            seen.add(href)
-
-            try:
-                card = a.find_element(By.XPATH, "./ancestor::*[.//*[contains(@class,'location') or contains(text(),'London') or contains(text(),'United Kingdom')]][1]")
-                loc_els = card.find_elements(By.CSS_SELECTOR, "[class*='location'],[class*='Location']")
-                location = loc_els[0].text.strip() if loc_els else ""
-            except Exception:
-                location = ""
-
-            if passes_filters(title, location):
-                jobs.append({"company": "Netflix", "title": title,
-                             "location": location, "link": href, "number": href})
-
-        print(f"Netflix: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Netflix error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
-
 
 def crawl_nike():
     jobs = []
@@ -314,42 +274,6 @@ def crawl_ea():
     return jobs
 
 
-def crawl_amazon_studios():
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://www.amazon.jobs/en/search?base_query=brand+OR+partnerships+OR+sponsorship&loc_query=United+Kingdom&business_category%5B%5D=amazon-studios")
-        wait = WebDriverWait(driver, 20)
-        time.sleep(5)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".job-tile, [class*='job-tile'], a[href*='/jobs/']")))
-        time.sleep(3)
-
-        seen = set()
-        for tile in driver.find_elements(By.CSS_SELECTOR, ".job-tile, [class*='job-tile']"):
-            try:
-                title_el = tile.find_element(By.CSS_SELECTOR, "h3 a, .job-title a, a")
-                title = title_el.text.strip()
-                href = title_el.get_attribute("href") or ""
-                if not title or href in seen:
-                    continue
-                seen.add(href)
-
-                loc_els = tile.find_elements(By.CSS_SELECTOR, ".location, [class*='location']")
-                location = loc_els[0].text.strip() if loc_els else "United Kingdom"
-
-                if passes_filters(title, location):
-                    jobs.append({"company": "Amazon Studios", "title": title,
-                                 "location": location, "link": href, "number": href})
-            except Exception:
-                continue
-
-        print(f"Amazon Studios: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Amazon Studios error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
-
 
 def crawl_apple():
     jobs = []
@@ -454,41 +378,6 @@ def crawl_patagonia():
         quit_driver(driver)
     return jobs
 
-
-def crawl_notion():
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://www.notion.so/careers")
-        wait = WebDriverWait(driver, 20)
-        time.sleep(6)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/careers/'], [class*='job'], [class*='role']")))
-        time.sleep(3)
-
-        seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/careers/']"):
-            href = a.get_attribute("href")
-            title = a.text.strip() or a.get_attribute("textContent").strip()
-            if not href or not title or href in seen or len(title) < 5 or href.endswith("/careers/"):
-                continue
-            seen.add(href)
-            try:
-                card = a.find_element(By.XPATH, "./ancestor::*[.//*[contains(@class,'location')]  ][1]")
-                loc_els = card.find_elements(By.CSS_SELECTOR, "[class*='location']")
-                location = loc_els[0].text.strip() if loc_els else ""
-            except Exception:
-                location = ""
-
-            if passes_filters(title, location):
-                jobs.append({"company": "Notion", "title": title,
-                             "location": location, "link": href, "number": href})
-
-        print(f"Notion: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Notion error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
 
 
 def crawl_gucci():
@@ -724,8 +613,8 @@ def crawl_lakers():
 def _crawl_heuristic(company_name, url, default_location=""):
     """Fallback crawler for sites with no recognizable ATS: follows any
     job/career/vacancy-looking link, then looks for a location near it in
-    the DOM. Same resilient pattern already used by crawl_netflix/crawl_nike/
-    crawl_patagonia/crawl_notion above."""
+    the DOM. Same resilient pattern already used by crawl_nike/crawl_patagonia
+    above."""
     jobs = []
     driver = make_driver()
     try:
@@ -889,9 +778,9 @@ def crawl_nestle():
 # ── Combined entry point ─────────────────────────────────────────────────────
 
 CUSTOM_CRAWLERS = [
-    crawl_netflix, crawl_nike, crawl_adidas, crawl_red_bull_brand,
-    crawl_ea, crawl_amazon_studios, crawl_apple, crawl_nintendo,
-    crawl_patagonia, crawl_notion, crawl_gucci,
+    crawl_nike, crawl_adidas, crawl_red_bull_brand,
+    crawl_ea, crawl_apple, crawl_nintendo,
+    crawl_patagonia, crawl_gucci,
     crawl_atp, crawl_man_utd, crawl_yankees, crawl_lakers,
     crawl_paramount, crawl_ferrero, crawl_nestle, crawl_lvmh,
 ]
