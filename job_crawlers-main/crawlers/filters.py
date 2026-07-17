@@ -6,7 +6,12 @@ import re
 ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
                  "partnership", "partnerships", "sponsorship", "sponsorships",
                  "licensing", "sport", "sports",
-                 "creative", "designer", "designers"]
+                 "creative", "designer", "designers",
+                 # Early-career terms: added after the NBA "Europe and Middle
+                 # East Internship Programme" posting (London) was crawled but
+                 # dropped — its title contained no role keyword at all.
+                 "intern", "interns", "internship", "internships",
+                 "graduate", "graduates", "trainee", "trainees"]
 
 _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWORDS))
 
