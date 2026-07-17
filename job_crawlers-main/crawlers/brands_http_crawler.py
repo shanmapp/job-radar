@@ -593,14 +593,16 @@ def crawl_all_ashby():
 
 # ── Eightfold AI ─────────────────────────────────────────────────────────────
 
-_EIGHTFOLD_PAGE_CAP = 10
+# The API serves 10 positions per page no matter what num asks for, so page
+# by the actual batch size. Cap guards against a runaway loop (~1000 jobs).
+_EIGHTFOLD_PAGE_CAP = 100
 
 
 def _crawl_eightfold(company_name, host, domain):
     jobs = []
     try:
-        count = None
-        for start in range(0, _EIGHTFOLD_PAGE_CAP * 100, 100):
+        start, count, pages = 0, None, 0
+        while pages < _EIGHTFOLD_PAGE_CAP and (count is None or start < count):
             r = requests.get(
                 f"{host}/api/apply/v2/jobs",
                 params={"domain": domain, "num": 100, "start": start},
@@ -611,6 +613,8 @@ def _crawl_eightfold(company_name, host, domain):
             batch = data.get("positions", [])
             if not batch:
                 break
+            start += len(batch)
+            pages += 1
             for pos in batch:
                 title = (pos.get("name") or "").strip()
                 location = pos.get("location") or ", ".join(pos.get("locations") or [])
@@ -621,8 +625,6 @@ def _crawl_eightfold(company_name, host, domain):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link,
                                  "number": job_id})
-            if start + 100 >= count:
-                break
 
         print(f"{company_name}: {len(jobs)} matching jobs")
     except Exception as e:
