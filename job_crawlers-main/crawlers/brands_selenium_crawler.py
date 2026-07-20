@@ -49,7 +49,7 @@ def _crawl_workday(company_name, careers_url):
                     '[data-automation-id="location"],[data-automation-id="locationText"],dd[class*="location"]')
                 location = loc_els[0].text.strip() if loc_els else ""
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link, "number": link})
             except Exception:
@@ -105,7 +105,7 @@ def _crawl_generic(company_name, url, job_sel, title_sel, location_sel=None, lin
                     loc_els = card.find_elements(By.CSS_SELECTOR, location_sel)
                     location = loc_els[0].text.strip() if loc_els else ""
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link, "number": link})
             except Exception:
@@ -148,7 +148,7 @@ def crawl_nike():
             except Exception:
                 location = "United Kingdom"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Nike"):
                 jobs.append({"company": "Nike", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -188,7 +188,7 @@ def crawl_adidas():
             except Exception:
                 location = ""
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Adidas"):
                 jobs.append({"company": "Adidas", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -227,7 +227,7 @@ def crawl_red_bull_brand():
             # layout: "<Category><EmploymentType>" / Title / Location, ...
             title = lines[1] if len(lines) > 1 else ""
             location = lines[2] if len(lines) > 2 else ""
-            if title and passes_filters(title, location):
+            if title and passes_filters(title, location, company="Red Bull"):
                 jobs.append({"company": "Red Bull", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -268,7 +268,7 @@ def crawl_ea():
             except Exception:
                 location = "United Kingdom"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="EA Sports"):
                 jobs.append({"company": "EA Sports", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -305,7 +305,7 @@ def crawl_apple():
             except Exception:
                 location = "United Kingdom"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Apple"):
                 jobs.append({"company": "Apple", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -337,7 +337,7 @@ def crawl_nintendo():
             if not title or href in seen or len(title) < 5:
                 continue
             seen.add(href)
-            if passes_filters(title):
+            if passes_filters(title, company="Nintendo"):
                 jobs.append({"company": "Nintendo", "title": title,
                              "location": "United Kingdom", "link": href, "number": href})
 
@@ -380,7 +380,7 @@ def crawl_gucci():
             if "gucci" not in title.lower() and "gucci" not in link.lower():
                 # still include if keyword matches — Kering board has all brands
                 pass
-            if passes_filters(title, "United Kingdom"):  # Kering UK office
+            if passes_filters(title, "United Kingdom", company="Gucci / Kering"):  # Kering UK office
                 jobs.append({"company": "Gucci / Kering", "title": title,
                              "location": "United Kingdom", "link": link, "number": link})
 
@@ -424,7 +424,7 @@ def crawl_atp():
                 parts = [p.strip() for p in lines[1].split("·")] if len(lines) > 1 else []
                 location = parts[1] if len(parts) > 1 else ""
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company="ATP Tour"):
                     jobs.append({"company": "ATP Tour", "title": title,
                                  "location": location, "link": url, "number": title})
             except Exception:
@@ -464,7 +464,7 @@ def crawl_man_utd():
             except Exception:
                 location = "Manchester, United Kingdom"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Manchester United"):
                 jobs.append({"company": "Manchester United", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -524,7 +524,7 @@ def crawl_lvmh():
                 except Exception:
                     pass
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company, "title": title,
                                  "location": location, "link": href, "number": href})
 
@@ -561,7 +561,7 @@ def _crawl_teamworkonline(company_name, url, default_location=""):
                 # lines are: [title, org name, "City · ST", level/department]
                 location = lines[2] if len(lines) > 2 else default_location
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": href, "number": href})
             except Exception:
@@ -627,7 +627,7 @@ def _crawl_heuristic(company_name, url, default_location=""):
             except Exception:
                 pass
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -668,7 +668,7 @@ def crawl_paramount():
             except Exception:
                 location = "London, United Kingdom"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Paramount"):
                 jobs.append({"company": "Paramount", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -707,7 +707,7 @@ def crawl_ferrero():
             except Exception:
                 title, location = "", ""
 
-            if title and passes_filters(title, location):
+            if title and passes_filters(title, location, company="Ferrero"):
                 jobs.append({"company": "Ferrero", "title": title,
                              "location": location, "link": href, "number": href})
 
@@ -741,7 +741,7 @@ def crawl_nestle():
             title = lines[1] if len(lines) > 1 else (lines[0] if lines else "")
             location = next((l.replace("Location(s): ", "") for l in lines if l.startswith("Location(s):")), "")
 
-            if title and passes_filters(title, location):
+            if title and passes_filters(title, location, company="Nestle"):
                 jobs.append({"company": "Nestle", "title": title,
                              "location": location, "link": href, "number": href})
 

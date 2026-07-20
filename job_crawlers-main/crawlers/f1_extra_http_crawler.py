@@ -30,7 +30,7 @@ def crawl_haas():
             job_id = job.get("id", "")
             link = f"https://haasf1team.bamboohr.com/careers/{job_id}"
 
-            if _haas_location_ok(city) and passes_filters(title):
+            if _haas_location_ok(city) and passes_filters(title, company="Haas F1"):
                 jobs.append({
                     "company": "Haas F1",
                     "title": title,

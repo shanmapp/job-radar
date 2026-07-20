@@ -85,22 +85,23 @@ def matches_location(location_str):
 # keyword-scope gaps surface instead of accumulating invisibly.
 
 _near_miss_lock = threading.Lock()
-_near_misses = {}   # (title, location) -> hit count since last drain
+_near_misses = {}   # (company, title, location) -> hit count since last drain
 _NEAR_MISS_CAP = 2000  # hard bound on memory if the digest never drains
 
 
-def passes_filters(title, location=None):
+def passes_filters(title, location=None, company=None):
     """Combined title+location filter; records near-misses.
 
     location=None means the caller already knows the job is in scope (bespoke
     crawlers for single-site companies pre-check location themselves).
+    company is only used to label near-miss digest entries.
     """
     loc_ok = matches_location(location) if location is not None else True
     if not loc_ok:
         return False
     if is_relevant(title):
         return True
-    key = (title.strip(), (location or "").strip())
+    key = ((company or "").strip(), title.strip(), (location or "").strip())
     with _near_miss_lock:
         if len(_near_misses) < _NEAR_MISS_CAP or key in _near_misses:
             _near_misses[key] = _near_misses.get(key, 0) + 1
@@ -108,7 +109,7 @@ def passes_filters(title, location=None):
 
 
 def drain_near_misses():
-    """Return and clear the accumulated near-misses: [(title, location), ...]."""
+    """Return and clear the accumulated near-misses: [(company, title, location), ...]."""
     with _near_miss_lock:
         items = sorted(_near_misses)
         _near_misses.clear()

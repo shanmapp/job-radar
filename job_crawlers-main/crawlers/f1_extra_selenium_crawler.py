@@ -49,7 +49,7 @@ def _crawl_workday_selenium(company_name, careers_url, filter_location=True):
                 seen.add(link)
 
                 location_ok = (not filter_location) or matches_location(location)
-                if location_ok and passes_filters(title):
+                if location_ok and passes_filters(title, company=company_name):
                     jobs.append({
                         "company": company_name,
                         "title": title,
@@ -103,7 +103,7 @@ def crawl_williams():
             except Exception:
                 location = "Grove, United Kingdom"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Williams F1"):
                 jobs.append({
                     "company": "Williams F1",
                     "title": title,
@@ -137,7 +137,7 @@ def crawl_cadillac():
                 loc_els = li.find_elements(By.CSS_SELECTOR, "[class*='location'], [class*='city'], [data-ui='job-location']")
                 location = loc_els[0].text.strip() if loc_els else "United Kingdom"
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company="Cadillac F1"):
                     jobs.append({
                         "company": "Cadillac F1",
                         "title": title,
@@ -178,7 +178,7 @@ def crawl_sauber():
             except Exception:
                 location = "Hinwil, Switzerland"
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Audi F1 (Sauber)"):
                 jobs.append({
                     "company": "Audi F1 (Sauber)",
                     "title": title,

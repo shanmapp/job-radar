@@ -38,7 +38,7 @@ def crawl_man_city():
             except Exception:
                 location = "Manchester, United Kingdom"
 
-            if passes_filters(title):
+            if passes_filters(title, company="Manchester City FC"):
                 jobs.append({
                     "company": "Manchester City FC",
                     "title": title,
@@ -120,7 +120,7 @@ def crawl_tottenham():
                 continue
             seen.add(title)
 
-            if passes_filters(title):
+            if passes_filters(title, company="Tottenham Hotspur"):
                 jobs.append({
                     "company": "Tottenham Hotspur",
                     "title": title,
@@ -163,7 +163,7 @@ def crawl_bayern():
             except Exception:
                 location = "Munich, Germany"
 
-            if passes_filters(title):
+            if passes_filters(title, company="Bayern Munich"):
                 jobs.append({
                     "company": "Bayern Munich",
                     "title": title,
@@ -218,7 +218,7 @@ def crawl_psg():
                 continue
             seen.add(link)
 
-            if passes_filters(title):
+            if passes_filters(title, company="Paris Saint-Germain"):
                 jobs.append({
                     "company": "Paris Saint-Germain",
                     "title": title,

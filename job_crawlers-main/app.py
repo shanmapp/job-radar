@@ -145,11 +145,13 @@ def send_near_miss_digest():
     if not items:
         return
     _CAP = 80  # keep the Telegram message readable
-    lines = "\n".join(f"- {title} ({loc})" if loc else f"- {title}"
-                      for title, loc in items[:_CAP])
+    def fmt(company, title, loc):
+        line = f"- {company}: {title}" if company else f"- {title}"
+        return f"{line} ({loc})" if loc else line
+    lines = "\n".join(fmt(*item) for item in items[:_CAP])
     extra = f"\n…and {len(items) - _CAP} more" if len(items) > _CAP else ""
     try:
-        send_alert("*Weekly near-miss digest*\n"
+        send_alert("*Weekly near-miss digest* (review list, NOT job alerts)\n"
                    f"{len(items)} in-scope jobs were dropped by the role-keyword "
                    "filter this week. If any look interesting, the keyword list "
                    f"needs widening:\n{lines}{extra}")

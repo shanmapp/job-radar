@@ -30,7 +30,7 @@ def crawl_aston_martin():
             location = f"{loc_obj.get('city', '')}, {loc_obj.get('province', '')}".strip(", ")
             link = item.get("url", f"https://astonmartinf1.pinpointhq.com/en/postings/{item.get('id','')}")
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company="Aston Martin F1"):
                 jobs.append({
                     "company": "Aston Martin F1",
                     "title": title,
@@ -74,7 +74,7 @@ def crawl_ferrari():
                 loc_val = tile.select_one("[id$='-location-value']")
                 location = loc_val.get_text(strip=True) if loc_val else ""
 
-                if not passes_filters(title, location):
+                if not passes_filters(title, location, company="Ferrari F1"):
                     continue
 
                 seen.add(data_url)

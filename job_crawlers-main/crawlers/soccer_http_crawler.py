@@ -27,7 +27,7 @@ def crawl_arsenal():
                 country = addr.get("addressCountry", "")
                 location = f"{city}, {country}".strip(", ")
 
-            if passes_filters(title):
+            if passes_filters(title, company="Arsenal FC"):
                 jobs.append({
                     "company": "Arsenal FC",
                     "title": title,
@@ -66,7 +66,7 @@ def crawl_liverpool():
             link = link_el.get("href", "")
             location = loc_el.get_text(strip=True) if loc_el else "Liverpool, UK"
 
-            if passes_filters(title):
+            if passes_filters(title, company="Liverpool FC"):
                 jobs.append({
                     "company": "Liverpool FC",
                     "title": title,
@@ -108,7 +108,7 @@ def crawl_chelsea_cfcw():
             location = ", ".join(filter(None, [loc.get("city"), loc.get("country")])) or "London, UK"
             link = f"{base}/ta/6189861.careers?ApplyToJob={job_id}&full_apply=&jobid={job_id}"
 
-            if passes_filters(title):
+            if passes_filters(title, company="Chelsea FC"):
                 jobs.append({
                     "company": "Chelsea FC",
                     "title": title,
@@ -163,7 +163,7 @@ def crawl_psg():
             external_path = posting.get("externalPath", "")
             link = f"https://parissaintgermain.wd3.myworkdayjobs.com/en-US/rejoigneznous{external_path}"
 
-            if passes_filters(title):
+            if passes_filters(title, company="Paris Saint-Germain"):
                 jobs.append({
                     "company": "Paris Saint-Germain",
                     "title": title,

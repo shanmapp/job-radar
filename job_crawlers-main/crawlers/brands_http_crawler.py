@@ -34,7 +34,7 @@ def _crawl_greenhouse(company_name, board_id):
             link = job.get("absolute_url", "")
             job_id = str(job.get("id", ""))
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -71,7 +71,7 @@ def _crawl_lever(company_name, company_id):
             link = job.get("hostedUrl", "")
             job_id = job.get("id", "")
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -117,7 +117,7 @@ def _crawl_smartrecruiters(company_name, company_id):
                 job_id = job.get("id", "")
                 link = f"https://careers.smartrecruiters.com/{company_id}/{job_id}"
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link, "number": job_id})
 
@@ -160,7 +160,7 @@ def _crawl_workable(company_name, account_slug):
             link = f"https://apply.workable.com/{account_slug}/j/{shortcode}/"
             job_id = str(job.get("id", ""))
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -199,7 +199,7 @@ def _crawl_teamtailor(company_name, host):
             country = address.get("addressCountry", "")
             location = ", ".join(filter(None, [city, country]))
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -233,7 +233,7 @@ def _crawl_breezy(company_name, subdomain):
             link = job.get("url", "")
             job_id = str(job.get("id", ""))
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -270,7 +270,7 @@ def _crawl_pinpoint(company_name, host):
             link = job.get("url", "")
             job_id = job.get("id", "")
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -318,7 +318,7 @@ def _crawl_consider(company_name, host, board_id):
             link = job.get("applyUrl", "")
             job_id = str(job.get("jobId", ""))
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -362,7 +362,7 @@ def _crawl_jobylon(company_name, company_id, default_country):
             link = (f"https://emp.jobylon.com/jobs/{sm.group(1)}/" if sm
                     else f"https://emp.jobylon.com/jobs/{job_id}/")
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -415,7 +415,7 @@ def _crawl_phenom(company_name, base):
                 link = re.sub(r"/apply$", "", job.get("applyUrl") or "") or \
                     f"{base}/job/{job.get('jobSeqNo', '')}"
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link,
                                  "number": job_id})
@@ -499,7 +499,7 @@ def _crawl_successfactors(company_name, host, path, style):
                 location = html_lib.unescape(location)
                 number = href.rstrip("/").rsplit("/", 1)[-1]
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location,
                                  "link": f"https://{host}{href}",
@@ -547,7 +547,7 @@ def crawl_puma():
                 link = f"https://about.puma.com{src.get('url', '')}"
                 number = str(src.get("entity_id", ""))
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company="Puma"):
                     jobs.append({"company": "Puma", "title": title,
                                  "location": location, "link": link,
                                  "number": number})
@@ -574,7 +574,7 @@ def _crawl_ashby(company_name, board_slug):
             link = job.get("jobUrl", "")
             job_id = job.get("id", "")
 
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": job_id})
 
@@ -621,7 +621,7 @@ def _crawl_eightfold(company_name, host, domain):
                 link = pos.get("canonicalPositionUrl") or f"{host}/careers/job/{pos.get('id')}"
                 job_id = str(pos.get("display_job_id") or pos.get("id") or "")
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link,
                                  "number": job_id})
@@ -666,7 +666,7 @@ def crawl_amazon_uk():
                 location = (job.get("location") or "").replace("GB,", "United Kingdom,")
                 link = "https://www.amazon.jobs" + (job.get("job_path") or "")
 
-                if passes_filters(title, location):
+                if passes_filters(title, location, company="Amazon"):
                     jobs.append({"company": "Amazon", "title": title,
                                  "location": location, "link": link,
                                  "number": job_id})
@@ -732,7 +732,7 @@ def _crawl_jibe(company_name, base, location_filtering):
 
             # Server-side location matching is fuzzy (multi-location postings
             # from other countries leak in), so always re-verify locally.
-            if passes_filters(title, location):
+            if passes_filters(title, location, company=company_name):
                 jobs.append({"company": company_name, "title": title,
                              "location": location, "link": link, "number": slug})
 
