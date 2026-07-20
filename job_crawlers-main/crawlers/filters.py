@@ -7,6 +7,10 @@ import threading
 ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
                  "partnership", "partnerships", "sponsorship", "sponsorships",
                  "licensing", "sport", "sports",
+                 # Added after Premier League "Commercial Projects Assistant"
+                 # (London) was dropped — club/league boards use "commercial"
+                 # for exactly the partnerships/sponsorship space in scope.
+                 "commercial",
                  "creative", "designer", "designers",
                  # Early-career terms: added after the NBA "Europe and Middle
                  # East Internship Programme" posting (London) was crawled but
@@ -46,6 +50,18 @@ EXCLUDE_TITLE_WORDS = [
 
 _EXCLUDE_RES = {w: re.compile(r"\b%s\b" % re.escape(w)) for w in EXCLUDE_TITLE_WORDS}
 
+# Operational/manual roles at sports companies. On club boards, whole-word
+# "sport"/"sports" appears in titles like "Sports Minibus Driver", which
+# otherwise sails through the role-keyword filter and triggers an alert.
+EXCLUDE_OPERATIONAL_WORDS = [
+    "driver", "drivers", "driving", "chauffeur", "minibus", "transport",
+    "cleaner", "cleaners", "cleaning", "steward", "stewards",
+    "chef", "chefs", "catering", "kitchen", "warehouse", "groundsperson",
+]
+
+_OPERATIONAL_RE = re.compile(
+    r"\b(?:%s)\b" % "|".join(re.escape(w) for w in EXCLUDE_OPERATIONAL_WORDS))
+
 
 def matches_keywords(title):
     return _ROLE_RE.search(title.lower()) is not None
@@ -63,8 +79,9 @@ def is_entry_level(title):
 
 
 def is_relevant(title):
-    """True if title matches a role keyword AND is not a senior role."""
-    return matches_keywords(title) and is_entry_level(title)
+    """True if title matches a role keyword AND is not a senior or operational role."""
+    return (matches_keywords(title) and is_entry_level(title)
+            and not _OPERATIONAL_RE.search(title.lower()))
 
 
 _LOCATION_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(t) for t in LOCATION_TERMS))
