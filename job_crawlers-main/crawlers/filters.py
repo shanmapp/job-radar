@@ -11,6 +11,10 @@ ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
                  # (London) was dropped — club/league boards use "commercial"
                  # for exactly the partnerships/sponsorship space in scope.
                  "commercial",
+                 # Added after Universal Music UK "Content Sales Executive"
+                 # (Kings Cross, London) was dropped — sales/marketing is the
+                 # commercial space in scope; gated by location + entry-level.
+                 "sales", "marketing",
                  "creative", "designer", "designers",
                  # Early-career terms: added after the NBA "Europe and Middle
                  # East Internship Programme" posting (London) was crawled but
