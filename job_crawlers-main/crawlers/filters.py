@@ -42,6 +42,11 @@ TARGET_COUNTRIES = [
 LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
     "uk", "england", "scotland", "wales", "italia", "swiss",
     "london", "maranello", "milan", "rome", "turin", "geneva", "zurich", "basel",
+    # Unilever Workday reports its UK sites as internal codes/names rather than
+    # a city+country, so "Assistant Brand Manager, Wellbeing Collective UK"
+    # (100VE = 100 Victoria Embankment, London HQ) read as out-of-scope and was
+    # dropped. These tokens are UK-specific Unilever sites.
+    "100ve", "port sunlight", "colworth",
 ]
 
 # Titles containing these words are senior/experienced roles — skip them.
