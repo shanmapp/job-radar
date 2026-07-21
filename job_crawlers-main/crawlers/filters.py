@@ -15,6 +15,9 @@ ROLE_KEYWORDS = ["strategy", "brand", "brands", "branding",
                  # (Kings Cross, London) was dropped — sales/marketing is the
                  # commercial space in scope; gated by location + entry-level.
                  "sales", "marketing",
+                 # Generic early-career title levels — gated by location +
+                 # entry-level so senior variants still drop.
+                 "executive", "assistant", "coordinator", "specialist",
                  "creative", "designer", "designers",
                  # Early-career terms: added after the NBA "Europe and Middle
                  # East Internship Programme" posting (London) was crawled but
