@@ -47,6 +47,7 @@ LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
     # (100VE = 100 Victoria Embankment, London HQ) read as out-of-scope and was
     # dropped. These tokens are UK-specific Unilever sites.
     "100ve", "port sunlight", "colworth",
+    "vancouver",
 ]
 
 # Titles containing these words are senior/experienced roles — skip them.
@@ -56,7 +57,7 @@ LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
 EXCLUDE_TITLE_WORDS = [
     "senior", "sr", "manager", "director", "head",
     "lead", "leads", "leader", "leaders", "principal", "vice president", "vp",
-    "chief", "president", "global", "group", "regional", "svp", "evp",
+    "chief", "president", "group", "regional", "svp", "evp",
     "cmo", "ceo", "cco",
 ]
 
