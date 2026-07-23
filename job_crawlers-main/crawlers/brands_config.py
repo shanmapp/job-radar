@@ -71,6 +71,7 @@ BREEZY_COMPANIES = {
 PINPOINT_COMPANIES = {
     "FIFA": "jobs.fifa.com",
     "Premier League": "premierleague.pinpointhq.com",
+    "Crystal Palace FC": "cpfc.pinpointhq.com",
 }
 
 # Jobylon (ATS): {company name: (numeric company id, default country appended
