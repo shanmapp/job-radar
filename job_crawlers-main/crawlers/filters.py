@@ -47,7 +47,7 @@ LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
     # (100VE = 100 Victoria Embankment, London HQ) read as out-of-scope and was
     # dropped. These tokens are UK-specific Unilever sites.
     "100ve", "port sunlight", "colworth",
-    "vancouver",
+    "vancouver", "british columbia",
 ]
 
 # Titles containing these words are senior/experienced roles — skip them.
