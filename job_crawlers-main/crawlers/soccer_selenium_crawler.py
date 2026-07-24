@@ -194,42 +194,6 @@ def crawl_bayern():
     return jobs
 
 
-def crawl_psg():
-    """PSG uses Workday - reuse same pattern as F1 Workday crawler."""
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://parissaintgermain.wd3.myworkdayjobs.com/rejoigneznous")
-        wait = WebDriverWait(driver, 20)
-        try:
-            btn = driver.find_element(By.XPATH, '//*[contains(text(),"Accept") or contains(text(),"Accepter")]')
-            btn.click()
-            time.sleep(1)
-        except Exception:
-            pass
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')))
-        time.sleep(3)
-
-        seen = set()
-        for title_el in driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]'):
-            title = title_el.text.strip()
-            link = title_el.get_attribute("href") or ""
-            if link in seen or not title:
-                continue
-            seen.add(link)
-
-            if passes_filters(title, company="Paris Saint-Germain"):
-                jobs.append({
-                    "company": "Paris Saint-Germain",
-                    "title": title,
-                    "location": "Paris, France",
-                    "link": link,
-                    "number": link
-                })
-
-        print(f"Paris Saint-Germain: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"PSG crawler error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
+# PSG moved to the HTTP Workday crawler (soccer_http_crawler.crawl_psg) — its
+# Workday board is fully reachable via the CXS JSON API, so Selenium was
+# redundant.
