@@ -639,45 +639,8 @@ def _crawl_heuristic(company_name, url, default_location=""):
     return jobs
 
 
-# ── Paramount (SAP SuccessFactors, UK-jobs category page) ────────────────────
-
-def crawl_paramount():
-    """Paramount's SuccessFactors instance exposes a static UK-scoped category
-    page (/go/UK-Jobs/...) that server-renders real listings — no auth wall,
-    unlike the Hershey/Nestle/Ferrero SF instances tried in this pass."""
-    jobs = []
-    driver = make_driver()
-    url = "https://careers.paramount.com/go/UK-Jobs/8711800/"
-    try:
-        driver.get(url)
-        wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.jobTitle-link")))
-        time.sleep(2)
-
-        seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a.jobTitle-link"):
-            href = a.get_attribute("href") or ""
-            title = a.text.strip()
-            if not title or href in seen:
-                continue
-            seen.add(href)
-            try:
-                li = a.find_element(By.XPATH, "./ancestor::li[1]")
-                li_lines = li.text.splitlines()
-                location = li_lines[li_lines.index("Location") + 1] if "Location" in li_lines else "London, United Kingdom"
-            except Exception:
-                location = "London, United Kingdom"
-
-            if passes_filters(title, location, company="Paramount"):
-                jobs.append({"company": "Paramount", "title": title,
-                             "location": location, "link": href, "number": href})
-
-        print(f"Paramount: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Paramount error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
+# Paramount moved to the HTTP SuccessFactors crawler (SUCCESSFACTORS_COMPANIES)
+# — its SF site is server-rendered, so Selenium was needless and fragile.
 
 
 # ── Ferrero (custom careers site) ────────────────────────────────────────────
@@ -759,7 +722,7 @@ CUSTOM_CRAWLERS = [
     crawl_nike, crawl_adidas, crawl_red_bull_brand,
     crawl_ea, crawl_apple, crawl_nintendo, crawl_gucci,
     crawl_atp, crawl_man_utd, crawl_yankees, crawl_lakers,
-    crawl_paramount, crawl_ferrero, crawl_nestle, crawl_lvmh,
+    crawl_ferrero, crawl_nestle, crawl_lvmh,
 ]
 
 

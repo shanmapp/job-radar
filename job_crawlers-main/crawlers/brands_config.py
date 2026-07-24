@@ -104,6 +104,11 @@ PHENOM_COMPANIES = {
 SUCCESSFACTORS_COMPANIES = {
     "Under Armour": ("careers.underarmour.com", "/search/", "csb"),
     "Heineken":     ("careers.theheinekencompany.com", "/Job-Listing", "listing"),
+    # Paramount's SF site uses the stock CSB markup; the /go/UK-Jobs category
+    # page is UK-scoped and server-rendered. Moved off Selenium (a broken
+    # headless Chrome silently returned 0 jobs — how "Marketing Executive P+
+    # EMEA" was missed).
+    "Paramount":    ("careers.paramount.com", "/go/UK-Jobs/8711800/", "csb"),
 }
 
 # Consider (ATS): {company name: (careers host, board id)}
