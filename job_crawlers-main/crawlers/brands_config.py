@@ -119,7 +119,11 @@ CONSIDER_COMPANIES = {
     "Night": ("careers.night.co", "night-media"),
 }
 
-# Workday Selenium: {company name: full careers URL}
+# Workday: {company name: full careers URL}. Crawled over the Workday CXS
+# JSON API (_crawl_workday_http), which pages through the whole board — the
+# old Selenium crawler only saw the first ~20 rendered cards, silently missing
+# everything deeper (e.g. Disney's "Specialist, Marketing Operations - EMEA",
+# one of 675 postings). A "?q=term" suffix becomes the API searchText.
 WORKDAY_COMPANIES = {
     "The North Face":   "https://vfc.wd5.myworkdayjobs.com/northface_careers",
     "Disney":           "https://disney.wd5.myworkdayjobs.com/disneycareer",

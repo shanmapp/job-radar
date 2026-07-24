@@ -10,6 +10,7 @@ from crawlers.brands_config import (
     WORKABLE_COMPANIES, TEAMTAILOR_COMPANIES, BREEZY_COMPANIES, PINPOINT_COMPANIES,
     CONSIDER_COMPANIES, JOBYLON_COMPANIES, PHENOM_COMPANIES,
     SUCCESSFACTORS_COMPANIES, ASHBY_COMPANIES, EIGHTFOLD_COMPANIES,
+    WORKDAY_COMPANIES,
 )
 import html as html_lib
 
@@ -518,6 +519,65 @@ def crawl_all_successfactors():
     return jobs
 
 
+# ── Workday (CXS JSON API) ───────────────────────────────────────────────────
+# Every Workday board exposes /wday/cxs/<tenant>/<site>/jobs, which returns the
+# full posting list paged 20 at a time (the API rejects limit > 20 with a 400).
+# This replaces the Selenium Workday crawler, which only scraped the first page
+# of rendered cards and silently dropped the rest of large boards.
+
+_WD_PAGE = 20  # Workday hard-caps limit at 20 per request
+
+def _crawl_workday_http(company_name, careers_url):
+    jobs = []
+    try:
+        base, _, query = careers_url.partition("?")
+        host = base.split("//", 1)[-1].split("/", 1)[0]
+        tenant = host.split(".", 1)[0]
+        site = base.rstrip("/").rsplit("/", 1)[-1]
+        # A "?q=term" suffix (e.g. ESPN, Lippincott) filters server-side.
+        search_text = ""
+        m = re.search(r"(?:^|&)q=([^&]+)", query)
+        if m:
+            from urllib.parse import unquote_plus
+            search_text = unquote_plus(m.group(1))
+
+        cxs = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
+        offset, total = 0, None
+        while total is None or offset < total:
+            r = requests.post(cxs, json={"appliedFacets": {}, "limit": _WD_PAGE,
+                                         "offset": offset, "searchText": search_text},
+                              headers={"Accept": "application/json",
+                                       "Content-Type": "application/json",
+                                       "User-Agent": UA}, timeout=20)
+            r.raise_for_status()
+            data = r.json()
+            total = data.get("total", 0)
+            batch = data.get("jobPostings", [])
+            if not batch:
+                break
+            for p in batch:
+                title = (p.get("title") or "").strip()
+                location = (p.get("locationsText") or "").strip()
+                ext = p.get("externalPath", "")
+                link = f"https://{host}/en-US/{site}{ext}"
+                if passes_filters(title, location, company=company_name):
+                    jobs.append({"company": company_name, "title": title,
+                                 "location": location, "link": link, "number": ext})
+            offset += _WD_PAGE
+
+        print(f"{company_name}: {len(jobs)} matching jobs (from {total} total)")
+    except Exception as e:
+        print(f"{company_name} (Workday) error: {e}")
+    return jobs
+
+
+def crawl_all_workday_http():
+    jobs = []
+    for company, url in WORKDAY_COMPANIES.items():
+        jobs.extend(_crawl_workday_http(company, url))
+    return jobs
+
+
 # ── PUMA (custom Elasticsearch endpoint) ─────────────────────────────────────
 # about.puma.com/dd_job_search proxies an Elasticsearch index of all postings
 # and accepts arbitrary ES queries unauthenticated. Documents carry title,
@@ -775,6 +835,7 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_jobylon())
     jobs.extend(crawl_all_phenom())
     jobs.extend(crawl_all_successfactors())
+    jobs.extend(crawl_all_workday_http())
     jobs.extend(crawl_puma())
     jobs.extend(crawl_all_ashby())
     jobs.extend(crawl_all_eightfold())

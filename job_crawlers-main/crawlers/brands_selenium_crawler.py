@@ -12,64 +12,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from crawlers.driver import make_driver, quit_driver
-from crawlers.brands_config import WORKDAY_COMPANIES, SELENIUM_COMPANIES, HEURISTIC_COMPANIES
+from crawlers.brands_config import SELENIUM_COMPANIES, HEURISTIC_COMPANIES
 
-
-# ── Workday (all brand Workday companies share the same DOM) ─────────────────
-
-def _crawl_workday(company_name, careers_url):
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get(careers_url)
-        wait = WebDriverWait(driver, 20)
-        try:
-            driver.find_element(By.XPATH, '//*[contains(text(),"Accept") or contains(text(),"accept")]').click()
-            time.sleep(1)
-        except Exception:
-            pass
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')))
-        time.sleep(3)
-
-        seen = set()
-        cards = driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="compositeJobListItem"]') or \
-                driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')
-
-        for card in cards:
-            try:
-                title_el = card if card.get_attribute("data-automation-id") == "jobTitle" \
-                           else card.find_element(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')
-                title = title_el.text.strip()
-                link = title_el.get_attribute("href") or ""
-                if link in seen or not title:
-                    continue
-                seen.add(link)
-
-                loc_els = card.find_elements(By.CSS_SELECTOR,
-                    '[data-automation-id="location"],[data-automation-id="locationText"],dd[class*="location"]')
-                location = loc_els[0].text.strip() if loc_els else ""
-
-                if passes_filters(title, location, company=company_name):
-                    jobs.append({"company": company_name, "title": title,
-                                 "location": location, "link": link, "number": link})
-            except Exception:
-                continue
-
-        print(f"{company_name}: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"{company_name} (Workday) error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
-
-
-def crawl_all_workday():
-    tasks = [partial(_crawl_workday, name, url) for name, url in WORKDAY_COMPANIES.items()]
-    jobs = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        for result in executor.map(lambda f: f(), tasks):
-            jobs.extend(result or [])
-    return jobs
+# Workday companies are crawled over HTTP (brands_http_crawler._crawl_workday_http).
 
 
 # ── Custom site crawlers ─────────────────────────────────────────────────────
@@ -727,9 +672,11 @@ CUSTOM_CRAWLERS = [
 
 
 def crawl_all_brands_selenium():
-    workday_tasks = [partial(_crawl_workday, name, url) for name, url in WORKDAY_COMPANIES.items()]
+    # Workday companies moved to the HTTP CXS-API crawler (crawl_all_workday_http
+    # in brands_http_crawler) — it pages the whole board instead of scraping only
+    # the first rendered page, and needs no browser.
     heuristic_tasks = [partial(_crawl_heuristic, name, url, loc) for name, (url, loc) in HEURISTIC_COMPANIES.items()]
-    all_tasks = workday_tasks + CUSTOM_CRAWLERS + heuristic_tasks
+    all_tasks = CUSTOM_CRAWLERS + heuristic_tasks
 
     jobs = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
