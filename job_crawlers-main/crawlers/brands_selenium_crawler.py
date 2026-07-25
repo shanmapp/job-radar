@@ -15,6 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from crawlers.driver import make_driver, quit_driver
 from crawlers.brands_config import SELENIUM_COMPANIES, HEURISTIC_COMPANIES
+from crawlers.silent_zero import report as _report_raw
 
 # Workday companies are crawled over HTTP (brands_http_crawler._crawl_workday_http).
 
@@ -37,7 +38,9 @@ def _crawl_generic(company_name, url, job_sel, title_sel, location_sel=None, lin
         time.sleep(4)
 
         seen = set()
-        for card in driver.find_elements(By.CSS_SELECTOR, job_sel):
+        cards = driver.find_elements(By.CSS_SELECTOR, job_sel)
+        _report_raw(company_name, len(cards))
+        for card in cards:
             try:
                 title_el = card.find_element(By.CSS_SELECTOR, title_sel)
                 title = title_el.text.strip()
@@ -82,7 +85,9 @@ def crawl_nike():
         time.sleep(4)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/job/']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/job/']")
+        _report_raw("Nike", len(links))
+        for a in links:
             href = a.get_attribute("href")
             title = a.text.strip()
             if not href or not title or href in seen or len(title) < 5:
@@ -122,7 +127,9 @@ def crawl_adidas():
         time.sleep(5)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/jobs/']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/jobs/']")
+        _report_raw("Adidas", len(links))
+        for a in links:
             href = a.get_attribute("href")
             title = a.text.strip()
             if not href or not title or href in seen or len(title) < 5 or href == driver.current_url:
@@ -165,7 +172,9 @@ def crawl_red_bull_brand():
         time.sleep(5)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='-ref']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='-ref']")
+        _report_raw("Red Bull", len(links))
+        for a in links:
             href = a.get_attribute("href")
             if not href or href in seen:
                 continue
@@ -200,7 +209,9 @@ def crawl_ea():
         time.sleep(3)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='JobDetail']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='JobDetail']")
+        _report_raw("EA Sports", len(links))
+        for a in links:
             href = a.get_attribute("href")
             title = a.text.strip()
             # each card repeats the link as a "More Information" anchor
@@ -239,7 +250,9 @@ def crawl_apple():
         time.sleep(3)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/en-gb/details/']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/en-gb/details/']")
+        _report_raw("Apple", len(links))
+        for a in links:
             href = a.get_attribute("href")
             title = a.text.strip()
             if not href or not title or href in seen:
@@ -277,6 +290,7 @@ def crawl_nintendo():
         seen = set()
         body_lines = [l.strip() for l in driver.find_element(By.TAG_NAME, "body").text.split("\n") if l.strip()]
         links = driver.find_elements(By.CSS_SELECTOR, "a[href*='job']")
+        _report_raw("Nintendo", len(links))
 
         for a in links:
             href = a.get_attribute("href") or ""
@@ -361,6 +375,7 @@ def crawl_gucci():
             except Exception as e:
                 print(f"Gucci/Kering query '{q}' error: {e}")
 
+        _report_raw("Gucci / Kering", len(seen))
         print(f"Gucci/Kering: {len(jobs)} matching jobs found")
     except Exception as e:
         print(f"Gucci/Kering error: {e}")
@@ -388,12 +403,15 @@ def crawl_atp():
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "careers-ui-job-listing-list-item")))
         except TimeoutException:
             if "job openings will be added" in driver.page_source.lower():
+                _report_raw("ATP Tour", 0)
                 print("ATP Tour: 0 matching jobs (board empty)")
                 return jobs
             raise
         time.sleep(3)
 
-        for item in driver.find_elements(By.CSS_SELECTOR, "careers-ui-job-listing-list-item"):
+        items = driver.find_elements(By.CSS_SELECTOR, "careers-ui-job-listing-list-item")
+        _report_raw("ATP Tour", len(items))
+        for item in items:
             try:
                 title = item.find_element(By.CSS_SELECTOR, ".b-heading span").text.strip()
                 lines = [l.strip() for l in item.text.split("\n") if l.strip()]
@@ -428,7 +446,9 @@ def crawl_man_utd():
         time.sleep(2)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='pJobDetails']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='pJobDetails']")
+        _report_raw("Manchester United", len(links))
+        for a in links:
             href = a.get_attribute("href") or ""
             title = a.text.strip()
             if not title or href in seen:
@@ -505,6 +525,7 @@ def crawl_lvmh():
                     jobs.append({"company": company, "title": title,
                                  "location": location, "link": href, "number": href})
 
+        _report_raw("LVMH", len(seen))
         print(f"LVMH hub: {len(jobs)} matching jobs found")
     except Exception as e:
         print(f"LVMH hub error: {e}")
@@ -525,7 +546,9 @@ def _crawl_teamworkonline(company_name, url, default_location=""):
         time.sleep(3)
 
         seen = set()
-        for card in driver.find_elements(By.CSS_SELECTOR, "div.organization-portal__job-details"):
+        cards = driver.find_elements(By.CSS_SELECTOR, "div.organization-portal__job-details")
+        _report_raw(company_name, len(cards))
+        for card in cards:
             try:
                 a = card.find_element(By.TAG_NAME, "a")
                 href = a.get_attribute("href") or ""
@@ -587,7 +610,9 @@ def _crawl_heuristic(company_name, url, default_location=""):
         time.sleep(5)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, link_sel):
+        links = driver.find_elements(By.CSS_SELECTOR, link_sel)
+        _report_raw(company_name, len(links))
+        for a in links:
             href = a.get_attribute("href") or ""
             title = (a.text or a.get_attribute("textContent") or "").strip()
             if not href or not title or href in seen or len(title) < 5 or href.rstrip("/") == url.rstrip("/"):
@@ -633,7 +658,9 @@ def crawl_ferrero():
         time.sleep(2)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/int/en/jobs/']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/int/en/jobs/']")
+        _report_raw("Ferrero", len(links))
+        for a in links:
             href = a.get_attribute("href") or ""
             if href in seen or href.rstrip("/") == url.rstrip("/"):
                 continue
@@ -672,7 +699,9 @@ def crawl_nestle():
         time.sleep(2)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/job/']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/job/']")
+        _report_raw("Nestle", len(links))
+        for a in links:
             href = a.get_attribute("href") or ""
             if href in seen:
                 continue

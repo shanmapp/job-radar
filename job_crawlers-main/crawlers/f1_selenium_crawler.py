@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from crawlers.driver import make_driver, quit_driver
+from crawlers.silent_zero import report as _report_raw
 
 LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
                   "italy", "italia", "maranello", "milan", "rome", "turin",
@@ -26,7 +27,9 @@ def crawl_mclaren():
         time.sleep(3)
 
         seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/o/']"):
+        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/o/']")
+        _report_raw("McLaren Racing", len(links))
+        for a in links:
             href = a.get_attribute("href")
             title = a.text.strip()
             if href in seen or not title or title == "View job":
