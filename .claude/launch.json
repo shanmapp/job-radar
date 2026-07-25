@@ -1,6 +1,0 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    { "name": "shanmapp", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "/Users/shan/shanmapp-site", "run", "dev"], "port": 3000 }
-  ]
-}

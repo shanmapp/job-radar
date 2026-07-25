@@ -4,7 +4,7 @@
 #        ./deploy.sh --no-push  (skip the push; just pull+restart on server)
 set -euo pipefail
 
-HOST=job-radar        # SSH alias (~/.ssh/config) -> Elastic IP 3.150.81.204
+HOST=job-radar        # SSH alias defined in ~/.ssh/config
 APP_DIR=/home/ubuntu/app
 SERVICE=job-radar
 
