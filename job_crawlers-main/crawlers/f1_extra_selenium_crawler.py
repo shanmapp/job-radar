@@ -120,40 +120,8 @@ def crawl_williams():
     return jobs
 
 
-def crawl_cadillac():
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://cadillacf1team.workable.com/")
-        wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li[data-ui='job'], .jobs-list li, a[href*='/j/']")))
-        time.sleep(3)
-
-        for li in driver.find_elements(By.CSS_SELECTOR, "li[data-ui='job'], .jobs-list li"):
-            try:
-                a = li.find_element(By.TAG_NAME, "a")
-                title = li.find_element(By.CSS_SELECTOR, "h3, h2, [class*='title']").text.strip()
-                href = a.get_attribute("href")
-                loc_els = li.find_elements(By.CSS_SELECTOR, "[class*='location'], [class*='city'], [data-ui='job-location']")
-                location = loc_els[0].text.strip() if loc_els else "United Kingdom"
-
-                if passes_filters(title, location, company="Cadillac F1"):
-                    jobs.append({
-                        "company": "Cadillac F1",
-                        "title": title,
-                        "location": location,
-                        "link": href,
-                        "number": href
-                    })
-            except Exception:
-                continue
-
-        print(f"Cadillac F1: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Cadillac crawler error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
+# Cadillac F1 moved to the HTTP Workable crawler
+# (f1_extra_http_crawler.crawl_cadillac) — the Workable v3 API is public.
 
 
 def crawl_sauber():

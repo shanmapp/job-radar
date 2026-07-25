@@ -1,6 +1,46 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters
-"""HTTP-based crawlers for Haas F1 (BambooHR API)."""
+"""HTTP-based crawlers for Haas F1 (BambooHR API) and Cadillac F1 (Workable API)."""
 import requests
+
+
+def crawl_cadillac():
+    """Cadillac F1 runs on Workable (cadillacf1team). The v3 jobs API is public
+    and pages via a `nextPage` token — the Selenium crawler only saw the first
+    rendered page. Single UK base (Silverstone), so location is pre-checked."""
+    jobs = []
+    try:
+        token, total = None, None
+        while True:
+            resp = requests.post(
+                "https://apply.workable.com/api/v3/accounts/cadillacf1team/jobs",
+                json={"token": token} if token else {},
+                timeout=15, headers={"User-Agent": "Mozilla/5.0"}
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            total = data.get("total", 0) if total is None else total
+            for job in data.get("results", []):
+                title = job.get("title", "")
+                loc = job.get("location", {})
+                location = ", ".join(filter(None, [loc.get("city", ""), loc.get("country", "")]))
+                shortcode = job.get("shortcode", "")
+                if passes_filters(title, location, company="Cadillac F1"):
+                    jobs.append({
+                        "company": "Cadillac F1",
+                        "title": title,
+                        "location": location,
+                        "link": f"https://apply.workable.com/cadillacf1team/j/{shortcode}/",
+                        "number": str(job.get("id", "")),
+                    })
+            token = data.get("nextPage")
+            if not token:
+                break
+
+        print(f"Cadillac F1: {len(jobs)} matching jobs (from {total} total)")
+    except Exception as e:
+        print(f"Cadillac F1 crawler error: {e}")
+
+    return jobs
 
 # Haas UK base - Banbury; Italy base - Maranello/Castelnuovo Rangone
 HAAS_UK_CITIES = ["banbury", "london", "oxford", "bicester", "silverstone"]
