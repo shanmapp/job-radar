@@ -7,7 +7,9 @@ import time
 import concurrent.futures
 from functools import partial
 from crawlers.filters import is_relevant, matches_location, passes_filters
+import re
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
@@ -295,39 +297,69 @@ def crawl_nintendo():
 
 
 
+# Gucci (and every Kering maison) hires through the Kering Eightfold career
+# site at careers.kering.com/careers. The old kering.wd3 Workday board this
+# crawler used to hit was decommissioned (returns 0), and the Eightfold JSON
+# API is PCSX-token-walled (403 to any plain HTTP client, even in-page fetch),
+# so a browser is genuinely required. The 1000+ job board can't be paged by
+# scrolling (stuck at 20 cards), so we drive the keyword search box — the
+# page's own JS makes the authorized API call — once per role query, reading
+# the rendered cards. Locations come back as "City, Region, CC" with ISO
+# country codes (+ an optional "+N more" suffix), expanded before filtering.
+_KERING_QUERIES = ["brand", "partnership", "sponsorship", "licensing",
+                   "marketing", "commercial", "strategy", "communication",
+                   "creative", "sales"]
+
+
+def _kering_location(raw):
+    from crawlers.brands_http_crawler import _expand_iso_location
+    raw = re.sub(r"\s*\+\s*\d+\s*more\s*$", "", raw).strip()
+    return _expand_iso_location(raw)
+
+
 def crawl_gucci():
-    jobs = []
+    jobs, seen = [], set()
     driver = make_driver()
     try:
-        driver.get("https://kering.wd3.myworkdayjobs.com/Kering")
-        wait = WebDriverWait(driver, 20)
-        try:
-            driver.find_element(By.XPATH, '//*[contains(text(),"Accept")]').click()
-            time.sleep(1)
-        except Exception:
-            pass
-        wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]')
-                   or "no job openings" in d.find_element(By.TAG_NAME, "body").text.lower())
-        time.sleep(3)
+        driver.get("https://careers.kering.com/careers")
+        wait = WebDriverWait(driver, 25)
+        time.sleep(5)
+        for xp in ('//*[contains(text(),"Accept")]', '//*[contains(text(),"Agree")]'):
+            try:
+                driver.find_element(By.XPATH, xp).click()
+                time.sleep(1)
+                break
+            except Exception:
+                pass
 
-        if not driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]'):
-            print("Gucci/Kering: 0 matching jobs (no openings currently listed)")
+        try:
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#position-query-search")))
+        except TimeoutException:
+            print("Gucci/Kering: search box not found (site changed?)")
             return jobs
 
-        seen = set()
-        for title_el in driver.find_elements(By.CSS_SELECTOR, '[data-automation-id="jobTitle"]'):
-            title = title_el.text.strip()
-            link = title_el.get_attribute("href") or ""
-            if link in seen or not title:
-                continue
-            seen.add(link)
-            # Filter to Gucci brand roles only
-            if "gucci" not in title.lower() and "gucci" not in link.lower():
-                # still include if keyword matches — Kering board has all brands
-                pass
-            if passes_filters(title, "United Kingdom", company="Gucci / Kering"):  # Kering UK office
-                jobs.append({"company": "Gucci / Kering", "title": title,
-                             "location": "United Kingdom", "link": link, "number": link})
+        for q in _KERING_QUERIES:
+            try:
+                box = driver.find_element(By.CSS_SELECTOR, "#position-query-search")
+                box.clear()
+                box.send_keys(q)
+                box.send_keys(Keys.RETURN)
+                time.sleep(4)
+                for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/careers/job/']"):
+                    href = a.get_attribute("href") or ""
+                    if not href or href in seen:
+                        continue
+                    seen.add(href)
+                    lines = [l.strip() for l in (a.text or "").split("\n") if l.strip()]
+                    if not lines:
+                        continue
+                    title = lines[0]
+                    location = _kering_location(lines[1]) if len(lines) > 1 else ""
+                    if passes_filters(title, location, company="Gucci / Kering"):
+                        jobs.append({"company": "Gucci / Kering", "title": title,
+                                     "location": location, "link": href, "number": href})
+            except Exception as e:
+                print(f"Gucci/Kering query '{q}' error: {e}")
 
         print(f"Gucci/Kering: {len(jobs)} matching jobs found")
     except Exception as e:
