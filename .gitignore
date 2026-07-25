@@ -10,3 +10,4 @@ package-lock.json
 *.log
 .env
 .claude/
+zero_streaks.json

@@ -1,4 +1,5 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters, ROLE_KEYWORDS
+from crawlers.silent_zero import report as _report_raw
 import requests
 import re
 import json
@@ -37,6 +38,7 @@ def crawl_red_bull():
                                  "location": location, "link": link, "number": str(req_id)})
             offset += len(reqs)
 
+        _report_raw("Red Bull Racing", total or 0)
         print(f"Red Bull Racing: {len(jobs)} matching jobs (from {total} total)")
     except Exception as e:
         print(f"Red Bull Racing crawler error: {e}")
@@ -57,6 +59,7 @@ def crawl_mercedes():
             print("Mercedes-AMG F1: __NEXT_DATA__ not found (site changed?)")
             return jobs
         vacancies = json.loads(m.group(1))["props"]["pageProps"].get("vacancies", [])
+        _report_raw("Mercedes-AMG F1", len(vacancies))
         for v in vacancies:
             f = v.get("fields", {})
             title = f.get("title", "")
@@ -92,6 +95,7 @@ def crawl_aston_martin():
         )
         resp.raise_for_status()
         items = resp.json().get("data", [])
+        _report_raw("Aston Martin F1", len(items))
 
         for item in items:
             title = item.get("title", "").strip()
@@ -118,6 +122,7 @@ def crawl_aston_martin():
 def crawl_ferrari():
     jobs = []
     seen = set()
+    raw_seen = set()
 
     for keyword in ROLE_KEYWORDS:
         try:
@@ -132,6 +137,8 @@ def crawl_ferrari():
 
             for tile in soup.select(".job-tile"):
                 data_url = tile.get("data-url", "")
+                if data_url:
+                    raw_seen.add(data_url)
                 if not data_url or data_url in seen:
                     continue
 
@@ -160,5 +167,6 @@ def crawl_ferrari():
         except Exception as e:
             print(f"Ferrari crawler error ({keyword}): {e}")
 
+    _report_raw("Ferrari F1", len(raw_seen))
     print(f"Ferrari F1: {len(jobs)} matching jobs found")
     return jobs

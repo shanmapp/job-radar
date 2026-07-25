@@ -17,6 +17,7 @@ from crawlers.brands_http_crawler import crawl_all_brands_http
 from crawlers.brands_selenium_crawler import crawl_all_brands_selenium
 from crawlers.health import check_sources
 from crawlers.filters import drain_near_misses
+from crawlers.silent_zero import run_daily_zero_check
 from database.mongo import ensure_company_document, add_jobs_if_not_exists
 from email_config.email_setup import send_email, send_alert
 
@@ -165,6 +166,30 @@ def handle_near_misses():
     return {"message": "Near-miss digest queued"}, 202
 
 
+def send_silent_zero_alert():
+    """Daily: flag crawlers whose job board has come back empty 3 checks running.
+    Uses raw (pre-filter) board size, so "no in-scope roles" (which is normal for
+    most companies) does NOT trip it — only a genuinely empty/broken board does."""
+    try:
+        dead = run_daily_zero_check()
+    except Exception as e:
+        print(f"Silent-zero check error: {e}")
+        return
+    if not dead:
+        return
+    lines = "\n".join(f"* {company}" for company in dead)
+    try:
+        send_alert(f"These companies are returning 0 jobs\n\n{lines}")
+    except Exception as e:
+        print(f"Silent-zero alert send error: {e}")
+
+
+@app.route('/silentzero', methods=['GET'])
+def handle_silent_zero():
+    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(send_silent_zero_alert)
+    return {"message": "Silent-zero check queued"}, 202
+
+
 @app.route('/health', methods=['GET'])
 def handle_check_health():
     concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(check_crawler_health)
@@ -225,6 +250,12 @@ def schedule_all_crawlers():
                           hour=10, minute=0, timezone=EST_TZ,
                           id="near_miss_digest")
         print("Scheduled weekly near-miss digest (Sun 10am EST)")
+    if not scheduler.get_job("silent_zero"):
+        # After the 9am health check, once the day's crawls have populated
+        # raw-count reports.
+        scheduler.add_job(send_silent_zero_alert, 'cron', hour=9, minute=30,
+                          timezone=EST_TZ, id="silent_zero")
+        print("Scheduled daily silent-zero check (9:30am EST)")
 
 schedule_all_crawlers()
 

@@ -13,6 +13,7 @@ from crawlers.brands_config import (
     WORKDAY_COMPANIES,
 )
 import html as html_lib
+from crawlers.silent_zero import report as _report_raw
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
@@ -29,7 +30,9 @@ def _crawl_greenhouse(company_name, board_id):
             headers={"User-Agent": UA}
         )
         r.raise_for_status()
-        for job in r.json().get("jobs", []):
+        board = r.json().get("jobs", [])
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("title", "")
             location = job.get("location", {}).get("name", "")
             link = job.get("absolute_url", "")
@@ -64,7 +67,9 @@ def _crawl_lever(company_name, company_id):
             headers={"User-Agent": UA}
         )
         r.raise_for_status()
-        for job in r.json():
+        board = r.json()
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("text", "")
             cats = job.get("categories", {})
             all_locations = cats.get("allLocations", [cats.get("location", "")])
@@ -96,6 +101,7 @@ def _crawl_smartrecruiters(company_name, company_id):
     try:
         offset = 0
         limit = 100
+        raw_total = 0
         while True:
             r = requests.get(
                 f"https://api.smartrecruiters.com/v1/companies/{company_id}/postings",
@@ -108,6 +114,7 @@ def _crawl_smartrecruiters(company_name, company_id):
             postings = data.get("content", [])
             if not postings:
                 break
+            raw_total += len(postings)
 
             for job in postings:
                 title = job.get("name", "")
@@ -126,6 +133,7 @@ def _crawl_smartrecruiters(company_name, company_id):
                 break
             offset += limit
 
+        _report_raw(company_name, raw_total)
         print(f"{company_name}: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"{company_name} (SmartRecruiters) error: {e}")
@@ -151,7 +159,9 @@ def _crawl_workable(company_name, account_slug):
             headers={"User-Agent": UA}
         )
         r.raise_for_status()
-        for job in r.json().get("results", []):
+        board = r.json().get("results", [])
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("title", "")
             loc = job.get("location", {})
             city = loc.get("city", "")
@@ -189,7 +199,9 @@ def _crawl_teamtailor(company_name, host):
             headers={"User-Agent": UA, "Accept": "application/json"}
         )
         r.raise_for_status()
-        for job in r.json().get("items", []):
+        board = r.json().get("items", [])
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("title", "")
             link = job.get("url", "")
             job_id = job.get("id", "")
@@ -228,7 +240,9 @@ def _crawl_breezy(company_name, subdomain):
             headers={"User-Agent": UA}
         )
         r.raise_for_status()
-        for job in r.json():
+        board = r.json()
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("name", "")
             location = job.get("location", {}).get("name", "")
             link = job.get("url", "")
@@ -262,7 +276,9 @@ def _crawl_pinpoint(company_name, host):
             headers={"User-Agent": UA}
         )
         r.raise_for_status()
-        for job in r.json().get("data", []):
+        board = r.json().get("data", [])
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("title", "")
             loc = job.get("location", {})
             city = loc.get("city", "")
@@ -313,7 +329,9 @@ def _crawl_consider(company_name, host, board_id):
             },
         )
         r.raise_for_status()
-        for job in r.json().get("jobs", []):
+        board = r.json().get("jobs", [])
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("title", "")
             location = ", ".join(job.get("locations", []))
             link = job.get("applyUrl", "")
@@ -352,6 +370,7 @@ def _crawl_jobylon(company_name, company_id, default_country):
         # Each job block: id="jobylon-job-<id>" ... job-title>TITLE< ...
         # jobylon-location"><strong>Location:</strong> CITY</li>
         blocks = re.split(r'id="jobylon-job-(\d+)"', r.text)[1:]
+        _report_raw(company_name, len(blocks[0::2]))
         for job_id, block in zip(blocks[0::2], blocks[1::2]):
             tm = re.search(r'jobylon-job-title[^>]*>([^<]+)<', block)
             lm = re.search(r'jobylon-location"><strong>[^<]*</strong>\s*([^<]+)<', block)
@@ -423,6 +442,7 @@ def _crawl_phenom(company_name, base):
             if start + 100 >= seen_total:
                 break
 
+        _report_raw(company_name, seen_total or 0)
         print(f"{company_name}: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"{company_name} (Phenom) error: {e}")
@@ -506,6 +526,7 @@ def _crawl_successfactors(company_name, host, path, style):
                                  "link": f"https://{host}{href}",
                                  "number": number})
 
+        _report_raw(company_name, len(seen))
         print(f"{company_name}: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"{company_name} (SuccessFactors) error: {e}")
@@ -565,6 +586,7 @@ def _crawl_workday_http(company_name, careers_url):
                                  "location": location, "link": link, "number": ext})
             offset += _WD_PAGE
 
+        _report_raw(company_name, total or 0)
         print(f"{company_name}: {len(jobs)} matching jobs (from {total} total)")
     except Exception as e:
         print(f"{company_name} (Workday) error: {e}")
@@ -613,6 +635,7 @@ def crawl_puma():
                                  "number": number})
             start += 10
 
+        _report_raw("Puma", total or 0)
         print(f"Puma: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"Puma (dd_job_search) error: {e}")
@@ -628,7 +651,9 @@ def _crawl_ashby(company_name, board_slug):
             f"https://api.ashbyhq.com/posting-api/job-board/{board_slug}",
             timeout=15, headers={"User-Agent": UA})
         r.raise_for_status()
-        for job in r.json().get("jobs", []):
+        board = r.json().get("jobs", [])
+        _report_raw(company_name, len(board))
+        for job in board:
             title = job.get("title", "")
             location = job.get("location", "")
             link = job.get("jobUrl", "")
@@ -686,6 +711,7 @@ def _crawl_eightfold(company_name, host, domain):
                                  "location": location, "link": link,
                                  "number": job_id})
 
+        _report_raw(company_name, count or 0)
         print(f"{company_name}: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"{company_name} (Eightfold) error: {e}")
@@ -731,6 +757,7 @@ def crawl_amazon_uk():
                                  "location": location, "link": link,
                                  "number": job_id})
 
+        _report_raw("Amazon", len(seen))
         print(f"Amazon: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"Amazon (search.json) error: {e}")
@@ -810,6 +837,7 @@ def _crawl_jibe(company_name, base, location_filtering):
         except Exception as e:
             print(f"{company_name} (Jibe) error: {e}")
 
+    _report_raw(company_name, len(seen))
     print(f"{company_name}: {len(jobs)} matching jobs")
     return jobs
 

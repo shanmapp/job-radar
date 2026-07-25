@@ -7,6 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from crawlers.filters import passes_filters
 from crawlers.brands_http_crawler import _crawl_successfactors, UA
+from crawlers.silent_zero import report as _report_raw
 
 
 def crawl_man_city():
@@ -46,6 +47,7 @@ def crawl_bayern():
                                  "location": "Munich, Germany",
                                  "link": f"https://careers.fcbayern.com{html_lib.unescape(href)}",
                                  "number": jid})
+        _report_raw("Bayern Munich", len(seen))
         print(f"Bayern Munich: {len(jobs)} matching jobs")
     except Exception as e:
         print(f"Bayern Munich crawler error: {e}")
@@ -62,6 +64,7 @@ def crawl_arsenal():
         )
         resp.raise_for_status()
         items = resp.json().get("items", [])
+        _report_raw("Arsenal FC", len(items))
 
         for item in items:
             title = item.get("title", "").strip()
@@ -102,7 +105,9 @@ def crawl_liverpool():
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        for li in soup.select("ul.jobs li"):
+        lis = soup.select("ul.jobs li")
+        _report_raw("Liverpool FC", len(lis))
+        for li in lis:
             link_el = li.select_one("a")
             title_el = li.select_one(".job-list-title")
             loc_el = li.select_one("[itemprop=jobLocation]")
@@ -148,6 +153,7 @@ def crawl_chelsea_cfcw():
         resp.raise_for_status()
         data = resp.json()
         reqs = data.get("job_requisitions", [])
+        _report_raw("Chelsea FC", len(reqs))
 
         for req in reqs:
             title = req.get("job_title", "").strip()
@@ -220,6 +226,7 @@ def crawl_psg():
                     "number": external_path
                 })
 
+        _report_raw("Paris Saint-Germain", len(postings))
         print(f"Paris Saint-Germain: {len(jobs)} matching jobs (from {data.get('total', 0)} total)")
     except Exception as e:
         print(f"PSG crawler error: {e}")

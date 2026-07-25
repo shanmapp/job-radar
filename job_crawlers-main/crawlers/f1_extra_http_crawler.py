@@ -1,4 +1,5 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters
+from crawlers.silent_zero import report as _report_raw
 """HTTP-based crawlers for Haas F1 (BambooHR API) and Cadillac F1 (Workable API)."""
 import requests
 
@@ -36,6 +37,7 @@ def crawl_cadillac():
             if not token:
                 break
 
+        _report_raw("Cadillac F1", total or 0)
         print(f"Cadillac F1: {len(jobs)} matching jobs (from {total} total)")
     except Exception as e:
         print(f"Cadillac F1 crawler error: {e}")
@@ -63,6 +65,7 @@ def crawl_haas():
         )
         resp.raise_for_status()
         data = resp.json()
+        _report_raw("Haas F1", len(data.get("result", [])))
 
         for job in data.get("result", []):
             title = job.get("jobOpeningName", "").strip()
