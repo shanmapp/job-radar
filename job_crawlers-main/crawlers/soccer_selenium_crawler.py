@@ -7,52 +7,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from crawlers.driver import make_driver, quit_driver
 
 
-def crawl_man_city():
-    """City Football Group - uses /search-jobs with job links containing /job/ in href."""
-    jobs = []
-    driver = make_driver()
-    try:
-        driver.get("https://careers.cityfootballgroup.com/search-jobs")
-        wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/job/']")))
-        time.sleep(3)
-
-        seen = set()
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href*='/job/']"):
-            href = a.get_attribute("href")
-            title = a.text.strip()
-            if not href or not title or href in seen or len(title) < 5:
-                continue
-            seen.add(href)
-
-            # Find location: sibling text after "Location" label near this element
-            try:
-                container = a.find_element(By.XPATH, "./ancestor::*[count(.//*[contains(@href,'/job/')])=1][1]")
-                body_text = container.text
-                lines = [l.strip() for l in body_text.split("\n") if l.strip()]
-                location = ""
-                for i, line in enumerate(lines):
-                    if "location" in line.lower() and i + 1 < len(lines):
-                        location = lines[i + 1]
-                        break
-            except Exception:
-                location = "Manchester, United Kingdom"
-
-            if passes_filters(title, company="Manchester City FC"):
-                jobs.append({
-                    "company": "Manchester City FC",
-                    "title": title,
-                    "location": location or "Manchester, United Kingdom",
-                    "link": href,
-                    "number": href
-                })
-
-        print(f"Manchester City FC: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Man City crawler error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
+# Manchester City moved to the HTTP SuccessFactors crawler
+# (soccer_http_crawler.crawl_man_city) — its coreCSB board is server-rendered.
 
 
 def crawl_chelsea():

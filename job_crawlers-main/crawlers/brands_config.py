@@ -17,7 +17,6 @@ GREENHOUSE_COMPANIES = {
     "Monster Energy":       "monsterenergy",
     "NFL":                  "nflcareers",
     "NY Knicks (MSG Sports)": "msgsports",
-    "Sony Interactive Entertainment": "sonyinteractiveentertainmentglobal",
     # MLB's careers pages embed Greenhouse job boards, confirmed via iframe src
     "MLB":                  "majorleaguebaseball",
     "MLB Network":          "mlbnetwork",

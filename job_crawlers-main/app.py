@@ -11,8 +11,8 @@ from crawlers.f1_http_crawler import crawl_aston_martin, crawl_ferrari
 from crawlers.f1_selenium_crawler import crawl_mclaren, crawl_red_bull, crawl_mercedes
 from crawlers.f1_extra_http_crawler import crawl_haas
 from crawlers.f1_extra_selenium_crawler import crawl_alpine, crawl_williams, crawl_cadillac, crawl_sauber, crawl_formula1
-from crawlers.soccer_http_crawler import crawl_arsenal, crawl_liverpool, crawl_chelsea_cfcw, crawl_psg
-from crawlers.soccer_selenium_crawler import crawl_man_city, crawl_chelsea, crawl_tottenham, crawl_bayern
+from crawlers.soccer_http_crawler import crawl_arsenal, crawl_liverpool, crawl_chelsea_cfcw, crawl_psg, crawl_man_city
+from crawlers.soccer_selenium_crawler import crawl_chelsea, crawl_tottenham, crawl_bayern
 from crawlers.brands_http_crawler import crawl_all_brands_http
 from crawlers.brands_selenium_crawler import crawl_all_brands_selenium
 from crawlers.health import check_sources

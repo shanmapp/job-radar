@@ -1,7 +1,19 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters
-"""HTTP-based crawlers for soccer clubs: Arsenal (Teamtailor), Liverpool, PSG (Workday API)."""
+"""HTTP-based crawlers for soccer clubs: Arsenal (Teamtailor), Liverpool, PSG (Workday API),
+Manchester City (SAP SuccessFactors)."""
 import requests
 from bs4 import BeautifulSoup
+from crawlers.brands_http_crawler import _crawl_successfactors
+
+
+def crawl_man_city():
+    """City Football Group runs SAP SuccessFactors (coreCSB) at
+    careers.cityfootballgroup.com/search-jobs — fully server-rendered, so the
+    shared csb HTTP parser handles it. Replaces the Selenium version, which
+    only scraped the first rendered page and risked silent zeros."""
+    return _crawl_successfactors("Manchester City FC",
+                                 "careers.cityfootballgroup.com",
+                                 "/search-jobs", "csb")
 
 
 def crawl_arsenal():
