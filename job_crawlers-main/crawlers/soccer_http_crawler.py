@@ -1,9 +1,12 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters
 """HTTP-based crawlers for soccer clubs: Arsenal (Teamtailor), Liverpool, PSG (Workday API),
-Manchester City (SAP SuccessFactors)."""
+Manchester City + Bayern Munich (SAP SuccessFactors)."""
+import re
+import html as html_lib
 import requests
 from bs4 import BeautifulSoup
-from crawlers.brands_http_crawler import _crawl_successfactors
+from crawlers.filters import passes_filters
+from crawlers.brands_http_crawler import _crawl_successfactors, UA
 
 
 def crawl_man_city():
@@ -14,6 +17,39 @@ def crawl_man_city():
     return _crawl_successfactors("Manchester City FC",
                                  "careers.cityfootballgroup.com",
                                  "/search-jobs", "csb")
+
+
+def crawl_bayern():
+    """Bayern Munich runs SAP SuccessFactors (careers.fcbayern.com/search/) but
+    its markup omits the per-job location value, so the shared csb parser drops
+    everything. Bayern is single-site (Munich), so parse the jobTitle-link
+    titles directly and treat location as Munich, Germany (in scope). Replaces
+    the Selenium crawler."""
+    jobs, seen = [], set()
+    try:
+        for page in range(60):  # SF serves 10/page
+            r = requests.get("https://careers.fcbayern.com/search/",
+                             params={"startrow": page * 10}, timeout=25,
+                             headers={"User-Agent": UA})
+            r.raise_for_status()
+            pairs = re.findall(
+                r'class="jobTitle-link[^"]*"[^>]*href="(/job/[^"]+?/(\d+)/)"[^>]*>\s*([^<]+?)\s*<',
+                r.text)
+            new = [(h, jid, t) for h, jid, t in pairs if h not in seen]
+            if not new:
+                break
+            for href, jid, title in new:
+                seen.add(href)
+                title = html_lib.unescape(title)
+                if passes_filters(title, "Munich, Germany", company="Bayern Munich"):
+                    jobs.append({"company": "Bayern Munich", "title": title,
+                                 "location": "Munich, Germany",
+                                 "link": f"https://careers.fcbayern.com{html_lib.unescape(href)}",
+                                 "number": jid})
+        print(f"Bayern Munich: {len(jobs)} matching jobs")
+    except Exception as e:
+        print(f"Bayern Munich crawler error: {e}")
+    return jobs
 
 
 def crawl_arsenal():
