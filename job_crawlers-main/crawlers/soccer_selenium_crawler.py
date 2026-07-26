@@ -1,10 +1,12 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters, matches_keywords
 """Selenium crawlers for soccer clubs: Man City, Chelsea, Tottenham, Bayern Munich, PSG."""
+import re
 import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from crawlers.driver import make_driver, quit_driver
+from crawlers.silent_zero import report as _report_raw
 
 
 # Manchester City moved to the HTTP SuccessFactors crawler
@@ -30,12 +32,14 @@ def crawl_chelsea():
 
         # Job titles appear before "Apply" in the listing
         seen = set()
+        candidates = set()  # plausible vacancy-title lines (raw board proxy)
         for i, line in enumerate(lines):
             if line in seen:
                 continue
             # Skip navigation/form labels
             if any(w in line.lower() for w in ["search", "login", "register", "vacancies", "click", "apply", "chelsea fc", "stamford", "sessional", "contract", "results", "navigation", "criteria", "keywords", "location", "type", "copyright"]):
                 continue
+            candidates.add(line)
             if matches_keywords(line):
                 seen.add(line)
                 jobs.append({
@@ -46,6 +50,10 @@ def crawl_chelsea():
                     "number": line
                 })
 
+        # Raw board size: prefer CoreHR's own "N vacancies/results" count,
+        # fall back to the number of candidate title lines.
+        m = re.search(r'(\d+)\s+(?:vacanc|result|match|position)', body_text, re.I)
+        _report_raw("Chelsea FC", int(m.group(1)) if m else len(candidates))
         print(f"Chelsea FC: {len(jobs)} matching jobs found")
     except Exception as e:
         print(f"Chelsea crawler error: {e}")
@@ -65,7 +73,7 @@ def crawl_tottenham():
         wait.until(EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"matches found") or contains(text(),"Results")]')))
         time.sleep(3)
 
-        seen = set()
+        seen = set()  # candidate job-listing anchors (non-nav) = raw board proxy
         for a in driver.find_elements(By.TAG_NAME, "a"):
             title = a.text.strip()
             href = a.get_attribute("href") or ""
@@ -85,6 +93,11 @@ def crawl_tottenham():
                     "number": title
                 })
 
+        # Raw board size: prefer WebRecruit's own "N matches found" count, fall
+        # back to the number of candidate (non-nav) job anchors.
+        m = re.search(r'(\d+)\s+matches?\s+found',
+                      driver.find_element(By.TAG_NAME, "body").text, re.I)
+        _report_raw("Tottenham Hotspur", int(m.group(1)) if m else len(seen))
         print(f"Tottenham Hotspur: {len(jobs)} matching jobs (page loaded OK)")
     except Exception as e:
         print(f"Tottenham crawler error: {e}")
