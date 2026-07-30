@@ -563,8 +563,15 @@ def _crawl_workday_http(company_name, careers_url):
             search_text = unquote_plus(m.group(1))
 
         cxs = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
-        offset, total = 0, None
-        while total is None or offset < total:
+        # Some Workday tenants (coke.wd1, sonyglobal.wd1, ...) only populate
+        # "total" on the first page and report 0 on every subsequent page,
+        # even though jobPostings keep coming. So capture the count once from
+        # page 0 and drive pagination off an empty batch, not off "total" —
+        # otherwise a page-2 zero clobbers the real count, which both stops
+        # paging early (missing everything past the first ~2 pages) and reports
+        # a raw board size of 0 to the silent-zero detector (false alarm).
+        offset, raw_total, seen = 0, 0, 0
+        while True:
             r = requests.post(cxs, json={"appliedFacets": {}, "limit": _WD_PAGE,
                                          "offset": offset, "searchText": search_text},
                               headers={"Accept": "application/json",
@@ -572,7 +579,8 @@ def _crawl_workday_http(company_name, careers_url):
                                        "User-Agent": UA}, timeout=20)
             r.raise_for_status()
             data = r.json()
-            total = data.get("total", 0)
+            if offset == 0:
+                raw_total = data.get("total", 0)
             batch = data.get("jobPostings", [])
             if not batch:
                 break
@@ -584,10 +592,14 @@ def _crawl_workday_http(company_name, careers_url):
                 if passes_filters(title, location, company=company_name):
                     jobs.append({"company": company_name, "title": title,
                                  "location": location, "link": link, "number": ext})
+            seen += len(batch)
             offset += _WD_PAGE
+            if raw_total and offset >= raw_total:
+                break
 
-        _report_raw(company_name, total or 0)
-        print(f"{company_name}: {len(jobs)} matching jobs (from {total} total)")
+        raw_total = max(raw_total, seen)
+        _report_raw(company_name, raw_total)
+        print(f"{company_name}: {len(jobs)} matching jobs (from {raw_total} total)")
     except Exception as e:
         print(f"{company_name} (Workday) error: {e}")
     return jobs
