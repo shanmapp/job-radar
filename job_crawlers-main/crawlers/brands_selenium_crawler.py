@@ -521,7 +521,7 @@ def crawl_lvmh():
                 except Exception:
                     pass
 
-                if passes_filters(title, location, company=company_name):
+                if passes_filters(title, location, company=company):
                     jobs.append({"company": company, "title": title,
                                  "location": location, "link": href, "number": href})
 
