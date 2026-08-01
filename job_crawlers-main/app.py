@@ -250,12 +250,16 @@ def schedule_all_crawlers():
                           hour=10, minute=0, timezone=EST_TZ,
                           id="near_miss_digest")
         print("Scheduled weekly near-miss digest (Sun 10am EST)")
-    if not scheduler.get_job("silent_zero"):
-        # After the 9am health check, once the day's crawls have populated
-        # raw-count reports.
-        scheduler.add_job(send_silent_zero_alert, 'cron', hour=9, minute=30,
-                          timezone=EST_TZ, id="silent_zero")
-        print("Scheduled daily silent-zero check (9:30am EST)")
+    # Daily silent-zero alert disabled 2026-08-01 (user request): after the
+    # Workday total-clobber and LVMH NameError fixes, the remaining standing
+    # flags are genuinely-empty small boards (LOLA, Wolff Olins, Jackman,
+    # Siegel+Gale, Mojang) and General Mills' permanent zero during its iCIMS
+    # migration — all noise, no signal. The detector + /silentzero endpoint
+    # stay available for manual on-demand checks; only the auto-send is off.
+    # if not scheduler.get_job("silent_zero"):
+    #     scheduler.add_job(send_silent_zero_alert, 'cron', hour=9, minute=30,
+    #                       timezone=EST_TZ, id="silent_zero")
+    #     print("Scheduled daily silent-zero check (9:30am EST)")
 
 schedule_all_crawlers()
 
