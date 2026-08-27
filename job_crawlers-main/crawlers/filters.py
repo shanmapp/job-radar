@@ -70,10 +70,14 @@ EXCLUDE_OPERATIONAL_WORDS = [
     "driver", "drivers", "driving", "chauffeur", "minibus", "transport",
     "cleaner", "cleaners", "cleaning", "steward", "stewards",
     "chef", "chefs", "catering", "kitchen", "warehouse", "groundsperson",
+    "sales associate", "sales associates",
 ]
 
 _OPERATIONAL_RE = re.compile(
     r"\b(?:%s)\b" % "|".join(re.escape(w) for w in EXCLUDE_OPERATIONAL_WORDS))
+
+# Part-time roles, in any spelling ("part-time", "part time", "part/time").
+_PART_TIME_RE = re.compile(r"\bpart[\s/-]?time\b")
 
 
 def matches_keywords(title):
@@ -94,7 +98,8 @@ def is_entry_level(title):
 def is_relevant(title):
     """True if title matches a role keyword AND is not a senior or operational role."""
     return (matches_keywords(title) and is_entry_level(title)
-            and not _OPERATIONAL_RE.search(title.lower()))
+            and not _OPERATIONAL_RE.search(title.lower())
+            and not _PART_TIME_RE.search(title.lower()))
 
 
 _LOCATION_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(t) for t in LOCATION_TERMS))

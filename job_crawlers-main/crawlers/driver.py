@@ -20,6 +20,15 @@ def make_driver():
     service = webdriver.ChromeService("/usr/local/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
     driver.set_page_load_timeout(60)
+    # set_page_load_timeout is enforced *by* chromedriver. If Chrome/chromedriver
+    # itself wedges, the Python client would otherwise block forever on the
+    # command socket (no default read timeout) — this is how one stuck LVMH
+    # crawl froze the whole scheduler for 2.5 days. A client-side command
+    # timeout makes a hung browser raise instead of hanging indefinitely.
+    try:
+        driver.command_executor.set_timeout(90)
+    except Exception:
+        pass
     return driver
 
 

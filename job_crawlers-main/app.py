@@ -134,9 +134,38 @@ def check_crawler_health():
             print(f"Health alert send error: {e}")
 
 
+# If no crawl pass completes for this long, the scheduler is effectively dead
+# (wedged crawl, crashed thread). Must exceed the ~7h quiet-hours gap plus one
+# off-peak interval, so a normal overnight lull never trips it.
+_STALENESS_THRESHOLD_H = 10
+
+
+def check_crawl_freshness():
+    """Alert if no crawl pass has completed within the staleness threshold.
+
+    The source-health check only probes host reachability — it reported 80/80
+    healthy while a wedged LVMH crawl froze every scheduled run for 2.5 days
+    (2026-08-24). This watches the actual heartbeat instead, so a stalled
+    scheduler is caught within hours rather than by a human noticing no emails."""
+    global _staleness_alerted
+    age_h = (datetime.now(EST_TZ) - _last_crawl_success).total_seconds() / 3600
+    if age_h < _STALENESS_THRESHOLD_H:
+        _staleness_alerted = False
+        return
+    if _staleness_alerted:
+        return  # already alerted for this episode; don't spam hourly
+    try:
+        send_alert(f"*Crawler stalled*\nNo crawl pass has completed in "
+                   f"{age_h:.1f}h (last success {_last_crawl_success:%Y-%m-%d %H:%M %Z}). "
+                   f"The scheduler is likely wedged — restart `job-radar`.")
+        _staleness_alerted = True
+    except Exception as e:
+        print(f"Staleness alert send error: {e}")
+
+
 def send_near_miss_digest():
-    """Weekly Telegram digest of near-misses (in-scope location, title failed
-    the role keywords). Makes silent filter drops reviewable — the NBA
+    """Telegram digest of near-misses (in-scope location, title failed the role
+    keywords), sent twice weekly. Makes silent filter drops reviewable — the NBA
     internship, PL Kicks and Amplify U misses would all have shown up here."""
     try:
         items = drain_near_misses()
@@ -147,15 +176,14 @@ def send_near_miss_digest():
         return
     _CAP = 80  # keep the Telegram message readable
     def fmt(company, title, loc):
-        line = f"- {company}: {title}" if company else f"- {title}"
-        return f"{line} ({loc})" if loc else line
+        return f"- {title} - {company}" if company else f"- {title}"
     lines = "\n".join(fmt(*item) for item in items[:_CAP])
     extra = f"\n…and {len(items) - _CAP} more" if len(items) > _CAP else ""
     try:
-        send_alert("*Weekly near-miss digest* (review list, NOT job alerts)\n"
+        send_alert("*Near-miss digest* (review list, NOT job alerts)\n"
                    f"{len(items)} in-scope jobs were dropped by the role-keyword "
-                   "filter this week. If any look interesting, the keyword list "
-                   f"needs widening:\n{lines}{extra}")
+                   "filter since the last digest. If any look interesting, the "
+                   f"keyword list needs widening:\n{lines}{extra}")
     except Exception as e:
         print(f"Near-miss digest send error: {e}")
 
@@ -208,6 +236,12 @@ def is_peak_hours():
 
 _crawl_lock = threading.Lock()
 
+# Heartbeat: EST timestamp of the last crawl pass that finished within budget.
+# Seeded at import so a freshly (re)started process isn't instantly "stale".
+_last_crawl_success = datetime.now(EST_TZ)
+# Alert only once per staleness episode, reset when a crawl succeeds again.
+_staleness_alerted = False
+
 def _kill_stray_chrome():
     try:
         subprocess.run(["pkill", "-f", "google-chrome"], capture_output=True)
@@ -215,15 +249,55 @@ def _kill_stray_chrome():
     except Exception:
         pass
 
+# Max wall-clock time for one crawl pass. A healthy full brand/F1/soccer pass
+# finishes in a few minutes; anything past this is a wedged Chrome or a network
+# call with no timeout. Bounding it here means a stuck crawler can never again
+# hold the scheduler's single instance slot indefinitely (a hung LVMH crawl
+# froze every hourly run for 2.5 days on 2026-08-24).
+_CRAWL_BUDGET_S = 25 * 60
+
+
+def _run_with_budget(fn):
+    """Run fn() in a worker thread, returning True if it finished within the
+    budget, False if it timed out. Python can't force-kill the thread, but
+    _kill_stray_chrome() makes any wedged Selenium call raise (thanks to the
+    driver's 90s command timeout) so the lingering thread unwinds on its own."""
+    done = threading.Event()
+
+    def target():
+        try:
+            fn()
+        finally:
+            done.set()
+
+    threading.Thread(target=target, name=f"crawl-{fn.__name__}", daemon=True).start()
+    return done.wait(_CRAWL_BUDGET_S)
+
+
 def smart_crawl(fn):
     if is_quiet_hours():
         print(f"Quiet hours (11pm–6am EST) — skipping {fn.__name__}")
         return
     minutes = 15 if is_peak_hours() else 60
     print(f"Running {fn.__name__} (next check in {minutes}min)")
-    with _crawl_lock:
-        fn()
+    # acquire with a timeout instead of `with _crawl_lock:` so a previous pass
+    # that is still wedged can never block this call forever.
+    if not _crawl_lock.acquire(timeout=_CRAWL_BUDGET_S):
+        print(f"{fn.__name__}: previous crawl still running after "
+              f"{_CRAWL_BUDGET_S // 60}min — killing stray Chrome, skipping this run")
         _kill_stray_chrome()
+    else:
+        try:
+            if _run_with_budget(fn):
+                global _last_crawl_success, _staleness_alerted
+                _last_crawl_success = datetime.now(EST_TZ)
+                _staleness_alerted = False
+            else:
+                print(f"{fn.__name__}: exceeded {_CRAWL_BUDGET_S // 60}min budget — "
+                      f"killing stray Chrome so the crawl thread unwinds")
+        finally:
+            _kill_stray_chrome()
+            _crawl_lock.release()
     job_id = f"smart_{fn.__name__}"
     scheduler.reschedule_job(job_id, trigger='interval', minutes=minutes)
 
@@ -245,11 +319,15 @@ def schedule_all_crawlers():
         scheduler.add_job(check_crawler_health, 'cron', hour=9, minute=0,
                           timezone=EST_TZ, id="source_health")
         print("Scheduled daily source health check (9am EST)")
+    if not scheduler.get_job("crawl_freshness"):
+        scheduler.add_job(check_crawl_freshness, 'interval', hours=1,
+                          id="crawl_freshness")
+        print("Scheduled hourly crawl-freshness watchdog")
     if not scheduler.get_job("near_miss_digest"):
-        scheduler.add_job(send_near_miss_digest, 'cron', day_of_week='sun',
+        scheduler.add_job(send_near_miss_digest, 'cron', day_of_week='wed,sun',
                           hour=10, minute=0, timezone=EST_TZ,
                           id="near_miss_digest")
-        print("Scheduled weekly near-miss digest (Sun 10am EST)")
+        print("Scheduled near-miss digest (Wed & Sun 10am EST)")
     # Daily silent-zero alert disabled 2026-08-01 (user request): after the
     # Workday total-clobber and LVMH NameError fixes, the remaining standing
     # flags are genuinely-empty small boards (LOLA, Wolff Olins, Jackman,
