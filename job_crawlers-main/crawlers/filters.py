@@ -70,7 +70,21 @@ EXCLUDE_OPERATIONAL_WORDS = [
     "driver", "drivers", "driving", "chauffeur", "minibus", "transport",
     "cleaner", "cleaners", "cleaning", "steward", "stewards",
     "chef", "chefs", "catering", "kitchen", "warehouse", "groundsperson",
+    # Retail sales-floor roles. "sales" + "assistant" both pass the role
+    # keywords and entry-level check, so "Sales Assistant"/"Sales Advisor" and
+    # luxury equivalents ("Client Advisor", "Sales Stylist") slipped through —
+    # only "sales associate" was blocked. These are the store-floor phrases in
+    # scope to drop; blanket "store"/"retail" is deliberately NOT excluded so
+    # roles like "Retail Marketing Coordinator" still pass.
     "sales associate", "sales associates",
+    "sales assistant", "sales assistants",
+    "sales advisor", "sales advisors", "sales adviser", "sales advisers",
+    "sales consultant", "sales consultants",
+    "client advisor", "client advisors", "client adviser", "client advisers",
+    "store assistant", "store assistants", "shop assistant", "shop assistants",
+    "retail assistant", "retail assistants", "retail consultant", "retail consultants",
+    "stylist", "stylists", "keyholder", "keyholders", "key holder", "key holders",
+    "cashier", "cashiers",
 ]
 
 _OPERATIONAL_RE = re.compile(
