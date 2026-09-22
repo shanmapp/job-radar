@@ -586,7 +586,18 @@ def _crawl_workday_http(company_name, careers_url):
                 break
             for p in batch:
                 title = (p.get("title") or "").strip()
+                # Some Workday tenants (e.g. LEGO's lego.wd103) leave
+                # locationsText null on single-location postings and put the
+                # location in bulletFields[0] instead (bulletFields is usually
+                # [location, jobReqId]). Reading only locationsText left every
+                # such job with an empty location, so matches_location() dropped
+                # it as out-of-scope — silently, since an empty location isn't
+                # even recorded as a near-miss. Fall back to bulletFields[0].
                 location = (p.get("locationsText") or "").strip()
+                if not location:
+                    bullets = p.get("bulletFields") or []
+                    if bullets:
+                        location = (bullets[0] or "").strip()
                 ext = p.get("externalPath", "")
                 link = f"https://{host}/en-US/{site}{ext}"
                 if passes_filters(title, location, company=company_name):

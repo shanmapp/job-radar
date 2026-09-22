@@ -85,6 +85,10 @@ EXCLUDE_OPERATIONAL_WORDS = [
     "retail assistant", "retail assistants", "retail consultant", "retail consultants",
     "stylist", "stylists", "keyholder", "keyholders", "key holder", "key holders",
     "cashier", "cashiers",
+    # Store-management titles are retail-floor roles. "Assistant Store Manager"
+    # otherwise passes via the junior/assistant exception to the "manager"
+    # exclusion. "store manager" also covers "assistant store manager".
+    "store manager", "store managers", "store supervisor", "store supervisors",
 ]
 
 _OPERATIONAL_RE = re.compile(
