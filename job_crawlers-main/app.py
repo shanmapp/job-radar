@@ -11,12 +11,11 @@ from crawlers.f1_http_crawler import crawl_aston_martin, crawl_ferrari, crawl_re
 from crawlers.f1_selenium_crawler import crawl_mclaren
 from crawlers.f1_extra_http_crawler import crawl_haas, crawl_cadillac
 from crawlers.f1_extra_selenium_crawler import crawl_alpine, crawl_williams, crawl_sauber, crawl_formula1
-from crawlers.soccer_http_crawler import crawl_arsenal, crawl_liverpool, crawl_chelsea_cfcw, crawl_psg, crawl_man_city, crawl_bayern
+from crawlers.soccer_http_crawler import crawl_arsenal, crawl_man_utd, crawl_liverpool, crawl_chelsea_cfcw, crawl_psg, crawl_man_city, crawl_bayern
 from crawlers.soccer_selenium_crawler import crawl_chelsea, crawl_tottenham
 from crawlers.brands_http_crawler import crawl_all_brands_http
 from crawlers.brands_selenium_crawler import crawl_all_brands_selenium
 from crawlers.health import check_sources
-from crawlers.filters import drain_near_misses
 from crawlers.silent_zero import run_daily_zero_check
 from database.mongo import ensure_company_document, add_jobs_if_not_exists
 from email_config.email_setup import send_email, send_alert
@@ -73,7 +72,7 @@ def check_f1_jobs():
         print("No new F1 jobs found")
 
 def check_soccer_jobs():
-    crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_chelsea, crawl_chelsea_cfcw, crawl_tottenham, crawl_bayern, crawl_psg]
+    crawlers = [crawl_arsenal, crawl_liverpool, crawl_man_city, crawl_man_utd, crawl_chelsea, crawl_chelsea_cfcw, crawl_tottenham, crawl_bayern, crawl_psg]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         results = list(executor.map(_run_crawler, crawlers))
@@ -161,37 +160,6 @@ def check_crawl_freshness():
         _staleness_alerted = True
     except Exception as e:
         print(f"Staleness alert send error: {e}")
-
-
-def send_near_miss_digest():
-    """Telegram digest of near-misses (in-scope location, title failed the role
-    keywords), sent twice weekly. Makes silent filter drops reviewable — the NBA
-    internship, PL Kicks and Amplify U misses would all have shown up here."""
-    try:
-        items = drain_near_misses()
-    except Exception as e:
-        print(f"Near-miss drain error: {e}")
-        return
-    if not items:
-        return
-    _CAP = 80  # keep the Telegram message readable
-    def fmt(company, title, loc):
-        return f"- {title} - {company}" if company else f"- {title}"
-    lines = "\n".join(fmt(*item) for item in items[:_CAP])
-    extra = f"\n…and {len(items) - _CAP} more" if len(items) > _CAP else ""
-    try:
-        send_alert("*Near-miss digest* (review list, NOT job alerts)\n"
-                   f"{len(items)} in-scope jobs were dropped by the role-keyword "
-                   "filter since the last digest. If any look interesting, the "
-                   f"keyword list needs widening:\n{lines}{extra}")
-    except Exception as e:
-        print(f"Near-miss digest send error: {e}")
-
-
-@app.route('/nearmisses', methods=['GET'])
-def handle_near_misses():
-    concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(send_near_miss_digest)
-    return {"message": "Near-miss digest queued"}, 202
 
 
 def send_silent_zero_alert():
@@ -323,11 +291,6 @@ def schedule_all_crawlers():
         scheduler.add_job(check_crawl_freshness, 'interval', hours=1,
                           id="crawl_freshness")
         print("Scheduled hourly crawl-freshness watchdog")
-    if not scheduler.get_job("near_miss_digest"):
-        scheduler.add_job(send_near_miss_digest, 'cron', day_of_week='wed,sun',
-                          hour=10, minute=0, timezone=EST_TZ,
-                          id="near_miss_digest")
-        print("Scheduled near-miss digest (Wed & Sun 10am EST)")
     # Daily silent-zero alert disabled 2026-08-01 (user request): after the
     # Workday total-clobber and LVMH NameError fixes, the remaining standing
     # flags are genuinely-empty small boards (LOLA, Wolff Olins, Jackman,

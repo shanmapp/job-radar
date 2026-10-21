@@ -433,44 +433,8 @@ def crawl_atp():
     return jobs
 
 
-# ── Manchester United (CandidateManager) ──────────────────────────────────────
-
-def crawl_man_utd():
-    jobs = []
-    driver = make_driver()
-    url = "https://www.candidatemanager.net/cm/p/pJobs.aspx?mid=YFDU&sid=YAZAZEV"
-    try:
-        driver.get(url)
-        wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='pJobDetails']")))
-        time.sleep(2)
-
-        seen = set()
-        links = driver.find_elements(By.CSS_SELECTOR, "a[href*='pJobDetails']")
-        _report_raw("Manchester United", len(links))
-        for a in links:
-            href = a.get_attribute("href") or ""
-            title = a.text.strip()
-            if not title or href in seen:
-                continue
-            seen.add(href)
-            try:
-                row = a.find_element(By.XPATH, "./ancestor::tr[1]")
-                tds = row.find_elements(By.TAG_NAME, "td")
-                location = tds[2].text.strip() if len(tds) > 2 else "Manchester, United Kingdom"
-            except Exception:
-                location = "Manchester, United Kingdom"
-
-            if passes_filters(title, location, company="Manchester United"):
-                jobs.append({"company": "Manchester United", "title": title,
-                             "location": location, "link": href, "number": href})
-
-        print(f"Manchester United: {len(jobs)} matching jobs found")
-    except Exception as e:
-        print(f"Manchester United error: {e}")
-    finally:
-        quit_driver(driver)
-    return jobs
+# Manchester United moved to careers.manutd.com (JSON feed) — crawled by
+# soccer_http_crawler.crawl_man_utd. The old CandidateManager board is empty.
 
 
 # ── LVMH group job hub ────────────────────────────────────────────────────────
@@ -727,7 +691,7 @@ def crawl_nestle():
 CUSTOM_CRAWLERS = [
     crawl_nike, crawl_adidas, crawl_red_bull_brand,
     crawl_ea, crawl_apple, crawl_nintendo, crawl_gucci,
-    crawl_atp, crawl_man_utd, crawl_yankees, crawl_lakers,
+    crawl_atp, crawl_yankees, crawl_lakers,
     crawl_ferrero, crawl_nestle, crawl_lvmh,
 ]
 

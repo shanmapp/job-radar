@@ -44,15 +44,13 @@ def crawl_cadillac():
 
     return jobs
 
-# Haas UK base - Banbury; Italy base - Maranello/Castelnuovo Rangone
+# Haas UK base - Banbury (Italy/Switzerland sites out of scope since UK-only)
 HAAS_UK_CITIES = ["banbury", "london", "oxford", "bicester", "silverstone"]
-HAAS_IT_CITIES = ["maranello", "castelnuovo", "modena", "milan", "milan"]
-HAAS_CH_CITIES = ["geneva", "zurich", "basel", "berne"]
 
 
 def _haas_location_ok(city):
     city_lower = (city or "").lower()
-    return any(c in city_lower for c in HAAS_UK_CITIES + HAAS_IT_CITIES + HAAS_CH_CITIES)
+    return any(c in city_lower for c in HAAS_UK_CITIES)
 
 
 def crawl_haas():

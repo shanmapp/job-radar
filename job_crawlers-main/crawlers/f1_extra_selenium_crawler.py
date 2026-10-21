@@ -7,12 +7,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from crawlers.driver import make_driver, quit_driver
 
 
-def matches_location(loc):
-    if not loc:
-        return False
-    return any(t in loc.lower() for t in LOCATION_TERMS)
-
-
 def _crawl_workday_selenium(company_name, careers_url, filter_location=True):
     """Generic Workday Selenium crawler. All Workday sites share data-automation-id attributes."""
     jobs = []

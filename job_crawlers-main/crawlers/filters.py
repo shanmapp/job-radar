@@ -1,5 +1,4 @@
 import re
-import threading
 
 # Matched as whole words only — plain substring matching let "sport" hit
 # "tranSPORT"/"pasSPORT", so inflections are listed explicitly rather than
@@ -32,22 +31,18 @@ _ROLE_RE = re.compile(r"\b(?:%s)\b" % "|".join(re.escape(k) for k in ROLE_KEYWOR
 
 # Countries in scope. Display-cased so API-level crawlers (e.g. Jibe) can use
 # them directly as server-side location queries; lowercased below for matching.
-TARGET_COUNTRIES = [
-    "United Kingdom", "Australia", "Austria", "Denmark", "Finland", "France",
-    "Germany", "Hong Kong", "Ireland", "Italy", "Japan", "Korea",
-    "Netherlands", "Norway", "Poland", "Spain", "Sweden", "Switzerland",
-]
+# Narrowed to UK-only on 2026-10-21 (was 18 countries across Europe/APAC).
+TARGET_COUNTRIES = ["United Kingdom"]
 
 # Matched as whole words/phrases within the location string.
 LOCATION_TERMS = [c.lower() for c in TARGET_COUNTRIES] + [
-    "uk", "england", "scotland", "wales", "italia", "swiss",
-    "london", "maranello", "milan", "rome", "turin", "geneva", "zurich", "basel",
+    "uk", "great britain", "britain", "england", "scotland", "wales",
+    "northern ireland", "london",
     # Unilever Workday reports its UK sites as internal codes/names rather than
     # a city+country, so "Assistant Brand Manager, Wellbeing Collective UK"
     # (100VE = 100 Victoria Embankment, London HQ) read as out-of-scope and was
     # dropped. These tokens are UK-specific Unilever sites.
     "100ve", "port sunlight", "colworth",
-    "vancouver", "british columbia",
 ]
 
 # Titles containing these words are senior/experienced roles — skip them.
@@ -128,42 +123,13 @@ def matches_location(location_str):
     return _LOCATION_RE.search(location_str.lower()) is not None
 
 
-# ── Near-miss capture ────────────────────────────────────────────────────────
-# Every job the radar has missed so far was dropped *silently* — a filtered-out
-# job looks identical to one that never existed (NBA internship, PL Kicks,
-# Amplify U). passes_filters() is the single choke point for title+location
-# filtering: when a job's location IS in scope but its title fails the role
-# keywords, the (title, location) pair is recorded here. app.py drains the
-# buffer on a weekly schedule and sends a Telegram digest for human review, so
-# keyword-scope gaps surface instead of accumulating invisibly.
-
-_near_miss_lock = threading.Lock()
-_near_misses = {}   # (company, title, location) -> hit count since last drain
-_NEAR_MISS_CAP = 2000  # hard bound on memory if the digest never drains
-
-
 def passes_filters(title, location=None, company=None):
-    """Combined title+location filter; records near-misses.
+    """Combined title+location filter.
 
     location=None means the caller already knows the job is in scope (bespoke
-    crawlers for single-site companies pre-check location themselves).
-    company is only used to label near-miss digest entries.
+    crawlers for single-site UK companies pre-check location themselves).
+    company is accepted for call-site readability and is unused.
     """
-    loc_ok = matches_location(location) if location is not None else True
-    if not loc_ok:
+    if location is not None and not matches_location(location):
         return False
-    if is_relevant(title):
-        return True
-    key = ((company or "").strip(), title.strip(), (location or "").strip())
-    with _near_miss_lock:
-        if len(_near_misses) < _NEAR_MISS_CAP or key in _near_misses:
-            _near_misses[key] = _near_misses.get(key, 0) + 1
-    return False
-
-
-def drain_near_misses():
-    """Return and clear the accumulated near-misses: [(company, title, location), ...]."""
-    with _near_miss_lock:
-        items = sorted(_near_misses)
-        _near_misses.clear()
-    return items
+    return is_relevant(title)

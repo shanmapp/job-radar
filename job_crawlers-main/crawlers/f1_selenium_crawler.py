@@ -6,17 +6,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from crawlers.driver import make_driver, quit_driver
 from crawlers.silent_zero import report as _report_raw
 
-LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
-                  "italy", "italia", "maranello", "milan", "rome", "turin",
-                  "switzerland", "swiss", "geneva", "zurich", "basel"]
-
-
-def matches_location(location_str):
-    if not location_str:
-        return False
-    return any(term in location_str.lower() for term in LOCATION_TERMS)
-
-
 def crawl_mclaren():
     jobs = []
     driver = make_driver()

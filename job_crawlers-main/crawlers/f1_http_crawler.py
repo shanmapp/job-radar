@@ -74,17 +74,6 @@ def crawl_mercedes():
         print(f"Mercedes-AMG F1 crawler error: {e}")
     return jobs
 
-LOCATION_TERMS = ["united kingdom", "uk", "england", "scotland", "wales", "london",
-                  "italy", "italia", "maranello", "milan", "rome", "turin",
-                  "switzerland", "swiss", "geneva", "zurich", "basel"]
-
-
-def matches_location(location_str):
-    if not location_str:
-        return False
-    return any(term in location_str.lower() for term in LOCATION_TERMS)
-
-
 def crawl_aston_martin():
     jobs = []
     try:

@@ -40,7 +40,9 @@ def crawl_chelsea():
             if any(w in line.lower() for w in ["search", "login", "register", "vacancies", "click", "apply", "chelsea fc", "stamford", "sessional", "contract", "results", "navigation", "criteria", "keywords", "location", "type", "copyright"]):
                 continue
             candidates.add(line)
-            if matches_keywords(line):
+            # passes_filters, not bare matches_keywords: the keyword-only check
+            # let senior titles ("Senior Partnerships Manager") through.
+            if passes_filters(line, company="Chelsea FC"):
                 seen.add(line)
                 jobs.append({
                     "company": "Chelsea FC",
@@ -72,6 +74,18 @@ def crawl_tottenham():
         wait = WebDriverWait(driver, 20)
         wait.until(EC.presence_of_element_located((By.XPATH, '//*[contains(text(),"matches found") or contains(text(),"Results")]')))
         time.sleep(3)
+
+        # WebRecruit renders only the first 10 results; the rest sit behind a
+        # "Show more results" button. Without clicking it the crawler silently
+        # saw 10 of 26 jobs (missing e.g. "Social Media Specialist").
+        for _ in range(20):
+            more = [b for b in driver.find_elements(
+                        By.XPATH, '//*[self::a or self::button][contains(., "Show more results")]')
+                    if b.is_displayed()]
+            if not more:
+                break
+            driver.execute_script("arguments[0].click();", more[0])
+            time.sleep(2)
 
         seen = set()  # candidate job-listing anchors (non-nav) = raw board proxy
         for a in driver.find_elements(By.TAG_NAME, "a"):

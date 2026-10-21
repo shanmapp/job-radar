@@ -1,6 +1,6 @@
 from crawlers.filters import is_relevant, matches_location, passes_filters
 """HTTP-based crawlers for soccer clubs: Arsenal (Teamtailor), Liverpool, PSG (Workday API),
-Manchester City + Bayern Munich (SAP SuccessFactors)."""
+Manchester United (careers.manutd.com JSON), Manchester City + Bayern Munich (SAP SuccessFactors)."""
 import re
 import html as html_lib
 import requests
@@ -90,6 +90,39 @@ def crawl_arsenal():
         print(f"Arsenal FC: {len(jobs)} matching jobs (from {len(items)} total)")
     except Exception as e:
         print(f"Arsenal crawler error: {e}")
+
+    return jobs
+
+
+def crawl_man_utd():
+    """Manchester United moved off CandidateManager (now permanently "No jobs
+    were found") to careers.manutd.com, whose listing page is fed by an open
+    postings.json returning every live posting in one response. Locations are
+    site names ("Manchester - Old Trafford") with no country, so the country is
+    appended — every United site is in the UK."""
+    jobs = []
+    try:
+        resp = requests.get("https://careers.manutd.com/postings.json", timeout=15,
+                            headers={"User-Agent": UA, "Accept": "application/json"})
+        resp.raise_for_status()
+        postings = resp.json().get("data", [])
+        _report_raw("Manchester United", len(postings))
+
+        for p in postings:
+            title = (p.get("title") or "").strip()
+            loc = p.get("location") or {}
+            site = (loc.get("name") or loc.get("city") or "Manchester").strip()
+            location = f"{site}, United Kingdom"
+            link = p.get("url") or f"https://careers.manutd.com{p.get('path', '')}"
+
+            if passes_filters(title, location, company="Manchester United"):
+                jobs.append({"company": "Manchester United", "title": title,
+                             "location": location, "link": link,
+                             "number": str(p.get("id") or link)})
+
+        print(f"Manchester United: {len(jobs)} matching jobs (from {len(postings)} total)")
+    except Exception as e:
+        print(f"Manchester United crawler error: {e}")
 
     return jobs
 
@@ -217,7 +250,8 @@ def crawl_psg():
             external_path = posting.get("externalPath", "")
             link = f"https://parissaintgermain.wd3.myworkdayjobs.com/en-US/rejoigneznous{external_path}"
 
-            if passes_filters(title, company="Paris Saint-Germain"):
+            if passes_filters(title, location_str or "Paris, France",
+                              company="Paris Saint-Germain"):
                 jobs.append({
                     "company": "Paris Saint-Germain",
                     "title": title,
