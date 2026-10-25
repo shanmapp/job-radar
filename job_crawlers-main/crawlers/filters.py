@@ -97,12 +97,18 @@ def matches_keywords(title):
     return _ROLE_RE.search(title.lower()) is not None
 
 
+# "Manager" is allowed when the title also marks the role as junior — e.g.
+# Google's "Associate Product Marketing Manager BS/MS Intern" or "Assistant
+# Brand Manager". Other senior words (senior/lead/head/director...) still drop.
+_JUNIOR_MANAGER_RE = re.compile(r"\b(?:junior|assistant|associate|intern|internship)\b")
+
+
 def is_entry_level(title):
     t = title.lower()
-    is_junior_or_assistant = "junior" in t or "assistant" in t
+    is_junior_manager = _JUNIOR_MANAGER_RE.search(t) is not None
     for w in EXCLUDE_TITLE_WORDS:
         if _EXCLUDE_RES[w].search(t):
-            if w == "manager" and is_junior_or_assistant:
+            if w == "manager" and is_junior_manager:
                 continue
             return False
     return True

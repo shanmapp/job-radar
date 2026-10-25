@@ -3,6 +3,7 @@ from crawlers.filters import is_relevant, matches_location, passes_filters, TARG
 HTTP-based crawlers for brand companies using Greenhouse, Lever, SmartRecruiters, and Workday APIs.
 All functions return a list of job dicts: {company, title, location, link, number}
 """
+import json
 import requests
 import re
 from crawlers.brands_config import (
@@ -787,6 +788,67 @@ def crawl_amazon_uk():
     return jobs
 
 
+# ── Google Careers (Google + YouTube) ────────────────────────────────────────
+# google.com/about/careers is server-rendered: each results page embeds its 20
+# jobs as JSON in an AF_initDataCallback 'ds:1' block, paged with ?page=N.
+# Job row fields: [0] id, [1] title, [7] company ("Google"/"YouTube"/
+# "DeepMind"), [9] locations as [display, address, city, postcode, region, ISO].
+# DeepMind shares the feed but is out of scope, so only these are kept:
+_GOOGLE_COMPANIES = {"Google", "YouTube"}
+_GOOGLE_RESULTS = "https://www.google.com/about/careers/applications/jobs/results/"
+_GOOGLE_DS1_RE = re.compile(
+    r"AF_initDataCallback\(\{key: 'ds:1'.*?data:(.*?), sideChannel: \{\}\}\);</script>",
+    re.S)
+_GOOGLE_PAGE_CAP = 30  # 20 jobs/page
+# Google's role mix is mostly engineering/cloud sales, which the generic
+# keywords ("intern", "specialist", "sales") let through in bulk. Per user
+# (2026-10-25), Google/YouTube titles must also contain "marketing". The
+# server-side q= narrows the fetch; the title check is what actually enforces it
+# (q also matches job descriptions).
+_GOOGLE_QUERY = "marketing"
+_GOOGLE_TITLE_RE = re.compile(r"\bmarketing\b", re.I)
+
+
+def crawl_google_uk():
+    jobs, seen = [], set()
+    try:
+        for page in range(1, _GOOGLE_PAGE_CAP + 1):
+            r = requests.get(_GOOGLE_RESULTS,
+                             params={"location": "United Kingdom", "q": _GOOGLE_QUERY,
+                                     "page": page},
+                             timeout=30, headers={"User-Agent": UA})
+            r.raise_for_status()
+            m = _GOOGLE_DS1_RE.search(r.text)
+            if not m:
+                raise ValueError(f"no ds:1 job data on page {page} (markup changed?)")
+            rows = (json.loads(m.group(1)) or [None])[0] or []
+            new = [row for row in rows if row and row[0] not in seen]
+            if not new:
+                break
+            for row in new:
+                job_id, title, company = row[0], (row[1] or "").strip(), row[7]
+                seen.add(job_id)
+                if company not in _GOOGLE_COMPANIES or not _GOOGLE_TITLE_RE.search(title):
+                    continue
+                # Multi-site postings list every office; keep the UK ones so the
+                # alert shows where in the UK, and the filter still sees "UK".
+                locs = [l[0] for l in (row[9] or []) if l and l[0]]
+                uk = [l for l in locs if l.endswith(", UK")] or locs
+                location = "; ".join(uk)
+
+                if passes_filters(title, location, company=company):
+                    jobs.append({"company": company, "title": title,
+                                 "location": location,
+                                 "link": f"{_GOOGLE_RESULTS}{job_id}",
+                                 "number": job_id})
+
+        _report_raw("Google", len(seen))
+        print(f"Google/YouTube: {len(jobs)} matching jobs (from {len(seen)} UK marketing-search postings)")
+    except Exception as e:
+        print(f"Google Careers error: {e}")
+    return jobs
+
+
 # ── Combined entry point ─────────────────────────────────────────────────────
 
 # ── Jibe/iCIMS careers front ends ────────────────────────────────────────────
@@ -891,4 +953,5 @@ def crawl_all_brands_http():
     jobs.extend(crawl_all_ashby())
     jobs.extend(crawl_all_eightfold())
     jobs.extend(crawl_amazon_uk())
+    jobs.extend(crawl_google_uk())
     return jobs
